@@ -31,6 +31,6 @@ A list with updated \code{pars}, optimizer result, sdreport, obj, and data
 used.
 }
 \description{
-Optimizes k, L_inf, d, m, and annuli_min_age using nlminb().
-Spawning parameters and annuli_date are treated as data.
+Optimizes k, L_inf, d, and m using nlminb().
+Spawning parameters, annuli_date, and annuli_min_age are treated as data.
 }

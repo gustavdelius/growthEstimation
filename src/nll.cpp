@@ -52,6 +52,7 @@ Type objective_function<Type>::operator() () {
   DATA_SCALAR(spawning_mu);
   DATA_SCALAR(spawning_kappa);
   DATA_SCALAR(annuli_date);
+  DATA_SCALAR(annuli_min_age);
 
   // Numerical constants
   DATA_SCALAR(Delta_l);
@@ -63,7 +64,6 @@ Type objective_function<Type>::operator() () {
   PARAMETER(L_inf);
   PARAMETER(d);
   PARAMETER(m);
-  PARAMETER(annuli_min_age);
 
   int N_l = l_grid.size();
   int N_t = a_grid.size() - 1;
@@ -187,7 +187,6 @@ Type objective_function<Type>::operator() () {
   ADREPORT(L_inf);
   ADREPORT(d);
   ADREPORT(m);
-  ADREPORT(annuli_min_age);
 
   return nll;
 }
