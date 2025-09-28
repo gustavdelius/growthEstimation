@@ -7,7 +7,7 @@
 getLogLik(pars, surveys, Delta_l = 1, Delta_t = 0.05)
 }
 \arguments{
-\item{pars}{A list containing the model parameters: k, L_inf, d, m.}
+\item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
 \item{surveys}{A data frame with survey age-at-length observations with
 columns \code{survey_date}, \code{Length}, \code{K}, and \code{count}.}

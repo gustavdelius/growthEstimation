@@ -1,6 +1,6 @@
 #' Get log likelihood of age observations
 #'
-#' @param pars A list containing the model parameters: k, L_inf, d, m.
+#' @param pars A list containing the model parameters: k, L_inf, d, m, r.
 #' @param surveys A data frame with survey age-at-length observations with
 #'   columns `survey_date`, `Length`, `K`, and `count`.
 #' @param Delta_l Width of size bins (cm). Default is 1.
@@ -21,7 +21,8 @@ getLogLik <- function(pars, surveys, Delta_l = 1, Delta_t = 0.05) {
     a_grid <- (0:N_t) * Delta_t   # Age grid (including age = 0)
 
     G <- getGreens(pars, l_max = l_max, Delta_l = Delta_l,
-                   t_max = t_max, Delta_t = Delta_t)
+                   t_max = t_max, Delta_t = Delta_t, 
+                   min_observed_size = min(surveys$Length))
 
     calculate_and_aggregate_likelihood(
         surveys, G = G, a = a_grid, l = l_grid,

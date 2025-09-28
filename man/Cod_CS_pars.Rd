@@ -8,10 +8,11 @@
 A named list of scalar numeric parameters used by the growth and
 age-at-length likelihood functions. Typical entries are:
 \describe{
-\item{k}{Growth rate parameter}
+\item{k}{Growth rate parameter for von Bertalanffy growth}
 \item{L_inf}{Asymptotic length}
 \item{d}{Diffusion/variability parameter}
 \item{m}{Mortality parameter}
+\item{r}{Constant growth rate parameter for small sizes}
 \item{spawning_mu}{Mean spawning date within the year (decimal year [0,1))}
 \item{spawning_kappa}{Concentration of spawning timing (Von Mises kappa)}
 \item{annuli_date}{Within-year date when annuli are laid (decimal year)}

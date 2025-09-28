@@ -1,6 +1,6 @@
 #' Fit growth parameters by minimizing the negative log likelihood with TMB
 #'
-#' Optimizes k, L_inf, d, and m using nlminb().
+#' Optimizes k, L_inf, d, m, and r using nlminb().
 #' Spawning parameters, annuli_date, and annuli_min_age are treated as data.
 #'
 #' @param pars List of parameters
@@ -66,20 +66,21 @@ fit_tmb_nll <- function(
         annuli_min_age = as.numeric(pars$annuli_min_age),
         Delta_l = as.numeric(Delta_l),
         Delta_t = as.numeric(Delta_t),
-        log_eps = log(1e-9)
+        log_eps = log(1e-9),
+        min_observed_size = as.numeric(min(surveys$Length))
     )
 
-    parameter_names <- c("k", "L_inf", "d", "m")
+    parameter_names <- c("k", "L_inf", "d", "m", "r")
     tmb_parameters <- pars[parameter_names]
 
-    lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6)
+    lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6)
     if (!all(names(lower) %in% parameter_names)) {
         bad_names <- setdiff(names(lower), parameter_names)
         stop("You cannot specify a lower limit on: ", paste(bad_names, collapse = ", "))
     }
     lower_limit[names(lower)] <- lower[names(lower)]
 
-    upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf)
+    upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf)
     if (!all(names(upper) %in% parameter_names)) {
         bad_names <- setdiff(names(upper), parameter_names)
         stop("You cannot specify an upper limit on: ", paste(bad_names, collapse = ", "))

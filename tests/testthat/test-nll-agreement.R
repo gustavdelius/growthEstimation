@@ -17,6 +17,7 @@ test_that("TMB nll matches NLL computed from getLogLik()", {
         L_inf = 80,
         d = 0.2,
         m = 20,
+        r = 0.3,
         spawning_mu = 0.4,
         spawning_kappa = 3,
         annuli_date = 0.25,

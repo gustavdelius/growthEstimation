@@ -45,16 +45,17 @@ solve_thomas <- function(a, b, c, d) {
 #' Implements an unconditionally stable finite volume scheme (implicit Euler)
 #' with upwinding for advection.
 #'
-#' @param pars A list containing the model parameters: k, L_inf, d, m.
+#' @param pars A list containing the model parameters: k, L_inf, d, m, r.
 #' @param u_initial A numeric vector for the initial condition u(l, 0).
 #' @param Delta_l The size step size (cm).
 #' @param t_max The maximum simulation time.
 #' @param Delta_t The time step size (years). Default is 0.05.
+#' @param min_observed_size The minimum size observed in surveys (cm). Default is 0.
 #' @return A matrix where each column is the solution u(t,l) at a given time
 #'   step. Rows correspond to time and columns to length.
 #'
 solve_pde <- function(pars, u_initial,
-                      Delta_l = 1, t_max = 10, Delta_t = 0.05) {
+                      Delta_l = 1, t_max = 10, Delta_t = 0.05, min_observed_size = 0) {
 
     # Set up Grids ----
 
@@ -75,7 +76,12 @@ solve_pde <- function(pars, u_initial,
     # These coefficients are time-independent, so we can compute them once.
 
     # Advection (v) and Diffusion (D) coefficients at interfaces
-    v <- pars$k * (pars$L_inf - l_interfaces) - pars$d / 2
+    # Use constant growth rate r for sizes below min_observed_size,
+    # von Bertalanffy growth rate k*(L_inf - L) for sizes >= min_observed_size
+    growth_rate <- ifelse(l_interfaces < min_observed_size, 
+                         pars$r, 
+                         pars$k * (pars$L_inf - l_interfaces))
+    v <- growth_rate - pars$d / 2
     D <- pars$d * l_interfaces / 2
 
     v_plus <- pmax(v, 0)
@@ -147,7 +153,7 @@ solve_pde <- function(pars, u_initial,
 #' @return A matrix holding the Green's function G(t,l). Rows correspond to
 #'   time and columns to length.
 #' @export
-getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05) {
+getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05, min_observed_size = 0) {
 
     # Set initial condition ----
     N_l <- ceiling(l_max / Delta_l)  # Number of size cells
@@ -156,6 +162,7 @@ getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05) {
 
     # Solve PDE ----
     G <- solve_pde(pars, u_initial = u_initial,
-                   Delta_l = Delta_l, t_max = t_max, Delta_t = Delta_t)
+                   Delta_l = Delta_l, t_max = t_max, Delta_t = Delta_t, 
+                   min_observed_size = min_observed_size)
     return(G)
 }

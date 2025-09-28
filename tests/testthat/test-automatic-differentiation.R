@@ -80,6 +80,7 @@ test_that("TMB automatic differentiation gradients match finite differences", {
     L_inf = 80,
     d = 0.2,
     m = 20,
+    r = 0.3,
     spawning_mu = 0.4,
     spawning_kappa = 3,
     annuli_date = 0.25,
@@ -118,19 +119,19 @@ test_that("Gradient consistency holds for different parameter values", {
   test_pars_list <- list(
     # Original parameters
     list(
-      k = 0.5, L_inf = 80, d = 0.2, m = 20,
+      k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
       spawning_mu = 0.4, spawning_kappa = 3,
       annuli_date = 0.25, annuli_min_age = 0.5
     ),
     # Different growth parameters
     list(
-      k = 0.3, L_inf = 100, d = 0.1, m = 15,
+      k = 0.3, L_inf = 100, d = 0.1, m = 15, r = 0.2,
       spawning_mu = 0.4, spawning_kappa = 3,
       annuli_date = 0.25, annuli_min_age = 0.5
     ),
     # Different spawning parameters
     list(
-      k = 0.4, L_inf = 90, d = 0.15, m = 25,
+      k = 0.4, L_inf = 90, d = 0.15, m = 25, r = 0.4,
       spawning_mu = 0.6, spawning_kappa = 2,
       annuli_date = 0.25, annuli_min_age = 0.5
     )
@@ -155,7 +156,7 @@ test_that("Gradient consistency holds for different parameter values", {
 
 test_that("Gradient consistency for individual parameters", {
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
@@ -188,7 +189,7 @@ test_that("Gradient consistency for individual parameters", {
 
 test_that("Gradient consistency with different step sizes", {
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
@@ -244,7 +245,7 @@ test_that("Gradient consistency with different survey data", {
   )
 
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
@@ -282,7 +283,7 @@ test_that("Gradient consistency with different survey data", {
 
 test_that("Gradient magnitude and sign consistency", {
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )

@@ -4,10 +4,17 @@
 \alias{getGreens}
 \title{Calculate Green's function for fish abundance PDE}
 \usage{
-getGreens(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05)
+getGreens(
+  pars,
+  l_max,
+  Delta_l = 1,
+  t_max = 10,
+  Delta_t = 0.05,
+  min_observed_size = 0
+)
 }
 \arguments{
-\item{pars}{A list containing the model parameters: k, L_inf, d, m.}
+\item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
 \item{l_max}{The maximum size}
 
@@ -16,6 +23,8 @@ getGreens(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05)
 \item{t_max}{The maximum simulation time.}
 
 \item{Delta_t}{The time step size (years). Default is 0.05.}
+
+\item{min_observed_size}{The minimum size observed in surveys (cm). Default is 0.}
 }
 \value{
 A matrix holding the Green's function G(t,l). Rows correspond to
