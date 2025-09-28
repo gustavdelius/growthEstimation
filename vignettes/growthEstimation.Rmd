@@ -42,7 +42,7 @@ plotAgeLikelihood(pars, age_at_length)
 The parameters appear to fit the age-at-size data, but the mortality and diffusion
 coefficients are too low. The estimated parameters are:
 ```{r}
-parameter_names <- c("k", "L_inf", "d", "m", "annuli_min_age")
+parameter_names <- c("k", "L_inf", "d", "m")
 pars[parameter_names]
 ```
 
