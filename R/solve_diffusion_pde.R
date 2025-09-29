@@ -50,12 +50,11 @@ solve_thomas <- function(a, b, c, d) {
 #' @param Delta_l The size step size (cm).
 #' @param t_max The maximum simulation time.
 #' @param Delta_t The time step size (years). Default is 0.05.
-#' @param min_observed_size The minimum size observed in surveys (cm). Default is 0.
 #' @return A matrix where each column is the solution u(t,l) at a given time
 #'   step. Rows correspond to time and columns to length.
 #'
 solve_pde <- function(pars, u_initial,
-                      Delta_l = 1, t_max = 10, Delta_t = 0.05, min_observed_size = 0) {
+                     Delta_l = 1, t_max = 10, Delta_t = 0.05) {
 
     # Set up Grids ----
 
@@ -78,6 +77,7 @@ solve_pde <- function(pars, u_initial,
     # Advection (v) and Diffusion (D) coefficients at interfaces
     # Use constant growth rate r for sizes below min_observed_size,
     # von Bertalanffy growth rate k*(L_inf - L) for sizes >= min_observed_size
+    min_observed_size <- if (is.null(pars$min_observed_size)) 0 else as.numeric(pars$min_observed_size)
     growth_rate <- ifelse(l_interfaces < min_observed_size, 
                          pars$r, 
                          pars$k * (pars$L_inf - l_interfaces))
@@ -153,7 +153,7 @@ solve_pde <- function(pars, u_initial,
 #' @return A matrix holding the Green's function G(t,l). Rows correspond to
 #'   time and columns to length.
 #' @export
-getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05, min_observed_size = 0) {
+getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05) {
 
     # Set initial condition ----
     N_l <- ceiling(l_max / Delta_l)  # Number of size cells
@@ -162,7 +162,6 @@ getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05, min_
 
     # Solve PDE ----
     G <- solve_pde(pars, u_initial = u_initial,
-                   Delta_l = Delta_l, t_max = t_max, Delta_t = Delta_t, 
-                   min_observed_size = min_observed_size)
+                   Delta_l = Delta_l, t_max = t_max, Delta_t = Delta_t)
     return(G)
 }

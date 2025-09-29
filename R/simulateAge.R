@@ -20,9 +20,12 @@ getLogLik <- function(pars, surveys, Delta_l = 1, Delta_t = 0.05) {
     l_grid <- (1:N_l) * Delta_l # Size grid (bin start values)
     a_grid <- (0:N_t) * Delta_t   # Age grid (including age = 0)
 
+    # Ensure min_observed_size in pars once for downstream calls
+    if (is.null(pars$min_observed_size)) {
+        pars$min_observed_size <- as.numeric(min(surveys$Length))
+    }
     G <- getGreens(pars, l_max = l_max, Delta_l = Delta_l,
-                   t_max = t_max, Delta_t = Delta_t, 
-                   min_observed_size = min(surveys$Length))
+                   t_max = t_max, Delta_t = Delta_t)
 
     calculate_and_aggregate_likelihood(
         surveys, G = G, a = a_grid, l = l_grid,
