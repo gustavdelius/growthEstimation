@@ -23,9 +23,9 @@ fit_tmb_nll <- function(
     stopifnot(all(c("survey_date", "Length", "K", "count") %in% names(surveys)))
     surveys <- as.data.frame(surveys)
 
-    # Ensure min_observed_size present in pars ----
-    if (is.null(pars$min_observed_size)) {
-        pars$min_observed_size <- as.numeric(min(surveys$Length))
+    # Ensure vB_min_size present in pars ----
+    if (is.null(pars$vB_min_size)) {
+        pars$vB_min_size <- as.numeric(min(surveys$Length))
     }
 
     # Build grids similarly to getLogLik()
@@ -72,7 +72,7 @@ fit_tmb_nll <- function(
         Delta_l = as.numeric(Delta_l),
         Delta_t = as.numeric(Delta_t),
         log_eps = log(1e-9),
-        min_observed_size = as.numeric(pars$min_observed_size)
+        vB_min_size = as.numeric(pars$vB_min_size)
     )
 
     parameter_names <- c("k", "L_inf", "d", "m", "r")

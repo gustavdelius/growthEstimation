@@ -22,7 +22,7 @@
 #'   \item{d}{Diffusion/variability parameter}
 #'   \item{m}{Mortality parameter}
 #'   \item{r}{Constant growth rate parameter for small sizes}
-#'   \item{min_observed_size}{Minimum observed size across surveys (cm). Used to
+#'   \item{vB_min_size}{Size at which growth becomes von Bertalanffy (cm). Used to
 #'     switch between constant growth (below) and von Bertalanffy growth (above).}
 #'   \item{spawning_mu}{Mean spawning date within the year (decimal year [0,1))}
 #'   \item{spawning_kappa}{Concentration of spawning timing (Von Mises kappa)}

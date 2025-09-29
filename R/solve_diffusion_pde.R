@@ -75,10 +75,10 @@ solve_pde <- function(pars, u_initial,
     # These coefficients are time-independent, so we can compute them once.
 
     # Advection (v) and Diffusion (D) coefficients at interfaces
-    # Use constant growth rate r for sizes below min_observed_size,
-    # von Bertalanffy growth rate k*(L_inf - L) for sizes >= min_observed_size
-    min_observed_size <- if (is.null(pars$min_observed_size)) 0 else as.numeric(pars$min_observed_size)
-    growth_rate <- ifelse(l_interfaces < min_observed_size, 
+    # Use constant growth rate r for sizes below vB_min_size,
+    # von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
+    vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
+    growth_rate <- ifelse(l_interfaces < vB_min_size, 
                          pars$r, 
                          pars$k * (pars$L_inf - l_interfaces))
     v <- growth_rate - pars$d / 2

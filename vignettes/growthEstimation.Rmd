@@ -46,6 +46,13 @@ coefficients are too low. The estimated parameters are:
 parameter_names <- c("k", "L_inf", "d", "m", "r")
 pars[parameter_names]
 ```
+If the von Bertalanffy growth rate is used for all sizes this would lead to
+$$
+t_0 = \frac{L_{min}}{r}+\frac{\log\left(1 - \frac{L_{min}}{L_\infty}\right)}{kr}
+$$
+```{r}
+pars$vB_min_size / pars$r + log(1 - pars$vB_min_size / pars$L_inf) / (pars$k * pars$r)
+```
 
 
 This leads to the following time evolution of a yearly
@@ -93,6 +100,6 @@ $$
 t_0 = \frac{L_{min}}{r}+\frac{\log\left(1 - \frac{L_{min}}{L_\infty}\right)}{kr}
 $$
 ```{r}
-pars$min_observed_size / pars$r + log(1 - pars$min_observed_size / pars$L_inf) / (pars$k * pars$r)
+pars$vB_min_size / pars$r + log(1 - pars$vB_min_size / pars$L_inf) / (pars$k * pars$r)
 ```
 

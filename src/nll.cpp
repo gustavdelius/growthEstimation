@@ -58,7 +58,7 @@ Type objective_function<Type>::operator() () {
   DATA_SCALAR(Delta_l);
   DATA_SCALAR(Delta_t);
   DATA_SCALAR(log_eps);
-  DATA_SCALAR(min_observed_size);
+  DATA_SCALAR(vB_min_size);
 
   // Parameters
   PARAMETER(k);
@@ -77,10 +77,10 @@ Type objective_function<Type>::operator() () {
   // Coefficients
   vector<Type> v(N_l + 1), D(N_l + 1);
   for (int i = 0; i <= N_l; ++i) {
-    // Use constant growth rate r for sizes below min_observed_size,
-    // von Bertalanffy growth rate k*(L_inf - L) for sizes >= min_observed_size
+    // Use constant growth rate r for sizes below vB_min_size,
+    // von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
     Type growth_rate;
-    if (l_interfaces(i) < min_observed_size) {
+    if (l_interfaces(i) < vB_min_size) {
       growth_rate = r;
     } else {
       growth_rate = k * (L_inf - l_interfaces(i));
