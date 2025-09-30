@@ -1,6 +1,6 @@
 #' Fit growth parameters by minimizing the negative log likelihood with TMB
 #'
-#' Optimizes k, L_inf, d, m, and r using nlminb().
+#' Optimizes k, L_inf, d, m, r, l50 and l25/l50 using nlminb().
 #' Spawning parameters, annuli_date, and annuli_min_age are treated as data.
 #'
 #' @param pars List of parameters
@@ -28,12 +28,21 @@ fit_tmb_nll <- function(
     lower = c(),
     upper = c()
 ) {
+    stopifnot(is.data.frame(age_at_length))
     stopifnot(all(c("survey_date", "Length", "K", "count") %in% names(age_at_length)))
-    age_at_length <- as.data.frame(age_at_length)
-    stopifnot(all(c("survey_date", "Length", "count") %in% names(length_freq)))
-    length_freq <- as.data.frame(length_freq)
+    # If the data was not already aggregated, do it now
+    age_at_length |>
+        group_by(survey_date, Length, K) |>
+        summarise(count = sum(count))
 
-    # Ensure vB_min_size present in pars ----
+    stopifnot(is.data.frame(length_freq))
+    stopifnot(all(c("survey_date", "Length", "count") %in% names(length_freq)))
+    # If the data was not already aggregated, do it now
+    length_freq |>
+        group_by(survey_date, Length) |>
+        summarise(count = sum(count))
+
+    # Ensure vB_min_size present in pars
     if (is.null(pars$vB_min_size)) {
         pars$vB_min_size <- as.numeric(min(age_at_length$Length))
     }
@@ -46,6 +55,8 @@ fit_tmb_nll <- function(
     # we need the cohort to have very low abundance at final time
     N_l <- ceiling(l_max / Delta_l)
     N_t <- ceiling(t_max / Delta_t)
+    # l_grid consists of the centres of the size bins at which we will
+    # evaluate the number density
     l_grid <- (1:N_l - 0.5) * Delta_l
     a_grid <- (0:N_t) * Delta_t
 

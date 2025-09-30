@@ -307,13 +307,15 @@ Type objective_function<Type>::operator() () {
       freq_nll -= dmultinom(counts, prob, true);
   }
 
+  Type nll = age_weight * age_nll + freq_weight * freq_nll;
+
   ADREPORT(k);
   ADREPORT(L_inf);
   ADREPORT(d);
   ADREPORT(m);
   ADREPORT(r);
 
-  return age_weight * age_nll + freq_weight * freq_nll;
+  return nll;
 }
 
 
