@@ -1,6 +1,19 @@
+#' Example length frequency data for Cod in the Celtic Sea.
+#'
+#' @format A data frame with 377 rows and 3 columns. The columns are:
+#' \describe{
+#'   \item{survey_date}{The within-year date of the survey (decimal year)}
+#'   \item{Length}{Length (cm)}
+#'   \item{count}{Number of fish observed with given length and annuli}
+#' }
+#' @name Cod_CS_length_freq
+#' @docType data
+#' @keywords datasets
+"Cod_CS_length_freq"
+
 #' Example age_at_length data for Cod in the Celtic Sea.
 #'
-#' @format A data frame with 329 rows and 4 columns. The columns ae:
+#' @format A data frame with 329 rows and 4 columns. The columns are:
 #' \describe{
 #'   \item{survey_date}{The within-year date of the survey (decimal year)}
 #'   \item{Length}{Length (cm)}
