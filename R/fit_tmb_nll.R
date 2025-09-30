@@ -1,7 +1,7 @@
 #' Fit growth parameters by minimizing the negative log likelihood with TMB
 #'
-#' Optimizes k, L_inf, d, m, and annuli_min_age using nlminb().
-#' Spawning parameters and annuli_date are treated as data.
+#' Optimizes k, L_inf, d, m, and r using nlminb().
+#' Spawning parameters, annuli_date, and annuli_min_age are treated as data.
 #'
 #' @param pars List of parameters
 #' @param surveys Data frame with columns survey_date (numeric), Length, K, count.
@@ -22,6 +22,11 @@ fit_tmb_nll <- function(
 ) {
     stopifnot(all(c("survey_date", "Length", "K", "count") %in% names(surveys)))
     surveys <- as.data.frame(surveys)
+
+    # Ensure vB_min_size present in pars ----
+    if (is.null(pars$vB_min_size)) {
+        pars$vB_min_size <- as.numeric(min(surveys$Length))
+    }
 
     # Build grids similarly to getLogLik()
     l_max <- ceiling(max(surveys$Length) * 1.1)
@@ -63,24 +68,24 @@ fit_tmb_nll <- function(
         spawning_mu = as.numeric(pars$spawning_mu),
         spawning_kappa = as.numeric(pars$spawning_kappa),
         annuli_date = as.numeric(pars$annuli_date),
+        annuli_min_age = as.numeric(pars$annuli_min_age),
         Delta_l = as.numeric(Delta_l),
         Delta_t = as.numeric(Delta_t),
-        log_eps = log(1e-9)
+        log_eps = log(1e-9),
+        vB_min_size = as.numeric(pars$vB_min_size)
     )
 
-    parameter_names <- c("k", "L_inf", "d", "m", "annuli_min_age")
+    parameter_names <- c("k", "L_inf", "d", "m", "r")
     tmb_parameters <- pars[parameter_names]
 
-    lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6,
-                      annuli_min_age = 0.0)
+    lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6)
     if (!all(names(lower) %in% parameter_names)) {
         bad_names <- setdiff(names(lower), parameter_names)
         stop("You cannot specify a lower limit on: ", paste(bad_names, collapse = ", "))
     }
     lower_limit[names(lower)] <- lower[names(lower)]
 
-    upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf,
-                    annuli_min_age = 5.0)
+    upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf)
     if (!all(names(upper) %in% parameter_names)) {
         bad_names <- setdiff(names(upper), parameter_names)
         stop("You cannot specify an upper limit on: ", paste(bad_names, collapse = ", "))

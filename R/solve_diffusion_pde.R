@@ -45,7 +45,7 @@ solve_thomas <- function(a, b, c, d) {
 #' Implements an unconditionally stable finite volume scheme (implicit Euler)
 #' with upwinding for advection.
 #'
-#' @param pars A list containing the model parameters: k, L_inf, d, m.
+#' @param pars A list containing the model parameters: k, L_inf, d, m, r.
 #' @param u_initial A numeric vector for the initial condition u(l, 0).
 #' @param Delta_l The size step size (cm).
 #' @param t_max The maximum simulation time.
@@ -54,7 +54,7 @@ solve_thomas <- function(a, b, c, d) {
 #'   step. Rows correspond to time and columns to length.
 #'
 solve_pde <- function(pars, u_initial,
-                      Delta_l = 1, t_max = 10, Delta_t = 0.05) {
+                     Delta_l = 1, t_max = 10, Delta_t = 0.05) {
 
     # Set up Grids ----
 
@@ -75,7 +75,13 @@ solve_pde <- function(pars, u_initial,
     # These coefficients are time-independent, so we can compute them once.
 
     # Advection (v) and Diffusion (D) coefficients at interfaces
-    v <- pars$k * (pars$L_inf - l_interfaces) - pars$d / 2
+    # Use constant growth rate r for sizes below vB_min_size,
+    # von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
+    vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
+    growth_rate <- ifelse(l_interfaces < vB_min_size, 
+                         pars$r, 
+                         pars$k * (pars$L_inf - l_interfaces))
+    v <- growth_rate - pars$d / 2
     D <- pars$d * l_interfaces / 2
 
     v_plus <- pmax(v, 0)

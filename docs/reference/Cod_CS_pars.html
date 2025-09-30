@@ -58,7 +58,7 @@
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
     <p>A named list of scalar numeric parameters used by the growth and
 age-at-length likelihood functions. Typical entries are:</p><dl><dt>k</dt>
-<dd><p>Growth rate parameter</p></dd>
+<dd><p>Growth rate parameter for von Bertalanffy growth</p></dd>
 
 <dt>L_inf</dt>
 <dd><p>Asymptotic length</p></dd>
@@ -68,6 +68,13 @@ age-at-length likelihood functions. Typical entries are:</p><dl><dt>k</dt>
 
 <dt>m</dt>
 <dd><p>Mortality parameter</p></dd>
+
+<dt>r</dt>
+<dd><p>Constant growth rate parameter for small sizes</p></dd>
+
+<dt>vB_min_size</dt>
+<dd><p>Size at which growth becomes von Bertalanffy (cm). Used to
+switch between constant growth (below) and von Bertalanffy growth (above).</p></dd>
 
 <dt>spawning_mu</dt>
 <dd><p>Mean spawning date within the year (decimal year [0,1))</p></dd>

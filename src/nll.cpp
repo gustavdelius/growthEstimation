@@ -52,18 +52,20 @@ Type objective_function<Type>::operator() () {
   DATA_SCALAR(spawning_mu);
   DATA_SCALAR(spawning_kappa);
   DATA_SCALAR(annuli_date);
+  DATA_SCALAR(annuli_min_age);
 
   // Numerical constants
   DATA_SCALAR(Delta_l);
   DATA_SCALAR(Delta_t);
   DATA_SCALAR(log_eps);
+  DATA_SCALAR(vB_min_size);
 
   // Parameters
   PARAMETER(k);
   PARAMETER(L_inf);
   PARAMETER(d);
   PARAMETER(m);
-  PARAMETER(annuli_min_age);
+  PARAMETER(r);
 
   int N_l = l_grid.size();
   int N_t = a_grid.size() - 1;
@@ -75,7 +77,15 @@ Type objective_function<Type>::operator() () {
   // Coefficients
   vector<Type> v(N_l + 1), D(N_l + 1);
   for (int i = 0; i <= N_l; ++i) {
-    v(i) = k * (L_inf - l_interfaces(i)) - d / Type(2.0);
+    // Use constant growth rate r for sizes below vB_min_size,
+    // von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
+    Type growth_rate;
+    if (l_interfaces(i) < vB_min_size) {
+      growth_rate = r;
+    } else {
+      growth_rate = k * (L_inf - l_interfaces(i));
+    }
+    v(i) = growth_rate - d / Type(2.0);
     D(i) = d * l_interfaces(i) / Type(2.0);
   }
   vector<Type> v_plus(N_l + 1), v_minus(N_l + 1);
@@ -187,7 +197,7 @@ Type objective_function<Type>::operator() () {
   ADREPORT(L_inf);
   ADREPORT(d);
   ADREPORT(m);
-  ADREPORT(annuli_min_age);
+  ADREPORT(r);
 
   return nll;
 }

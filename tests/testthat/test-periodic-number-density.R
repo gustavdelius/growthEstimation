@@ -1,5 +1,5 @@
 test_that("periodic density is approximately 1-year periodic", {
-    pars <- list(k = 0.2, L_inf = 100, d = 0.1, m = 0.1,
+    pars <- list(k = 0.2, L_inf = 100, d = 0.1, m = 0.1, r = 0.3,
                  spawning_mu = 0.5, spawning_kappa = 4)
 
     l_max <- 50

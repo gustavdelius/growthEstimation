@@ -14,7 +14,7 @@ getNumberDensity(
 )
 }
 \arguments{
-\item{pars}{A list containing the model parameters: k, L_inf, d, m.}
+\item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
 \item{l_max}{The maximum size}
 

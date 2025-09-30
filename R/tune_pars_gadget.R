@@ -30,7 +30,7 @@ tune_pars <- function(pars, age_at_length) {
 
 	# Helpers for slider rules
 	is_fixed_01 <- function(name) grepl("^(annuli_date|annuli_min_age|spawning_mu)$", name)
-	is_dynamic  <- function(name) grepl("^(k|L_inf|d|m|spawning_kappa)$", name)
+	is_dynamic  <- function(name) grepl("^(k|L_inf|d|m|r|spawning_kappa)$", name)
 	compute_dynamic_range <- function(value_num) {
 		minv <- max(0, value_num / 2)
 		maxv <- max(1, value_num * 2)

@@ -7,7 +7,7 @@
 getPeriodicNumberDensity(pars, l_max, Delta_l = 1, t_max = 1, Delta_t = 0.05)
 }
 \arguments{
-\item{pars}{A list containing the model parameters: k, L_inf, d, m.}
+\item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
 \item{l_max}{The maximum size}
 

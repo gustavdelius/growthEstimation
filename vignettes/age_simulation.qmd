@@ -13,11 +13,18 @@ This document explains how we model the length-stratified empirical dataset coll
 We describe the population density $u(l,t)$ for $l>l_0$ (where $l_0$ is the egg size) with the PDE
 $$ \frac{\partial u}{\partial t} = -\frac{\partial J}{\partial l} - \mu u$$
 where the flux $J$ is
-$$ J(l) = k(L_\infty^{0} - l) u - \alpha l \frac{\partial u}{\partial l}$$
+$$ J(l) = g(l) u - \alpha l \frac{\partial u}{\partial l}$$
 and the mortality $\mu$ is $\mu_0 / l$.
-The positive parameters $k, L_\infty^0, d$ and $\mu_0$ need to be estimated from data. The superscript $0$ on $L_\infty$ indicates that this is the asymptotic length in the absence of diffusion. The average growth rate is given by
-$$ g(l) = k(L_\infty^0 - l) $$
-with $L_\infty = L_\infty^0 + \alpha/k$ being the asymptotic length when diffusion is included.
+
+The growth rate $g(l)$ is piecewise defined:
+$$ g(l) = \begin{cases}
+r & \text{if } l < l_{min} \\
+k(L_\infty^{0} - l) & \text{if } l \geq l_{min}
+\end{cases} $$
+
+where $l_{min}$ is the smallest size observed in any of the surveys, $r$ is a constant growth rate for small sizes, and $k(L_\infty^{0} - l)$ is the von Bertalanffy growth rate for larger sizes.
+
+The positive parameters $k, L_\infty^0, d, \mu_0$ and $r$ need to be estimated from data. The superscript $0$ on $L_\infty$ indicates that this is the asymptotic length in the absence of diffusion. The asymptotic length when diffusion is included is $L_\infty = L_\infty^0 + \alpha/k$.
 
 This PDE allows us to calculate the temporal evolution of a single cohort of fish born at the same instant. To do this numerically we discretize
 the size into length bins ${l_1, l_2, \dots, l_{n_l}}$ and at time zero place all individuals into the smallest size bin. 

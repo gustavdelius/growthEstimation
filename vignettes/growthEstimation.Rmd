@@ -11,6 +11,7 @@ I still need to write this vignette.
 ```{r}
 library(growthEstimation)
 pars <- list(
+    r = 10,
     k = 0.1,
     L_inf = 110,
     d = 1,
@@ -42,8 +43,15 @@ plotAgeLikelihood(pars, age_at_length)
 The parameters appear to fit the age-at-size data, but the mortality and diffusion
 coefficients are too low. The estimated parameters are:
 ```{r}
-parameter_names <- c("k", "L_inf", "d", "m", "annuli_min_age")
+parameter_names <- c("k", "L_inf", "d", "m", "r")
 pars[parameter_names]
+```
+If the von Bertalanffy growth rate is used for all sizes this would lead to
+$$
+t_0 = \frac{L_{min}}{r}+\frac{\log\left(1 - \frac{L_{min}}{L_\infty}\right)}{kr}
+$$
+```{r}
+pars$vB_min_size / pars$r + log(1 - pars$vB_min_size / pars$L_inf) / (pars$k * pars$r)
 ```
 
 
@@ -67,9 +75,7 @@ pars <- fit$pars
 plotAgeLikelihood(pars, age_at_length)
 ```
 
-```{r}
-pars[parameter_names]
-```
+
 
 This leads to a more realistic time evolution of a yearly cohort:
 ```{r}
@@ -84,5 +90,16 @@ The solution including all yearly cohorts looks as follows:
 ```{r}
 u_periodic <- getPeriodicNumberDensity(pars, l_max = 200, t_max = 3)
 plotDensity3D(u_periodic, l_min = 20)
+```
+
+```{r}
+pars[parameter_names]
+```
+If the von Bertalanffy growth rate is used for all sizes this would lead to
+$$
+t_0 = \frac{L_{min}}{r}+\frac{\log\left(1 - \frac{L_{min}}{L_\infty}\right)}{kr}
+$$
+```{r}
+pars$vB_min_size / pars$r + log(1 - pars$vB_min_size / pars$L_inf) / (pars$k * pars$r)
 ```
 
