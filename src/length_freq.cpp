@@ -51,9 +51,6 @@ Type von_mises_pdf(Type x, Type mu, Type kappa) {
 template<class Type>
 Type objective_function<Type>::operator() () {
     // Observation data
-    DATA_IVECTOR(obs_survey_index);
-    DATA_IVECTOR(obs_length_index);
-    DATA_VECTOR(obs_count);
     DATA_MATRIX(count_matrix);
 
     // Survey meta
@@ -170,7 +167,6 @@ Type objective_function<Type>::operator() () {
     Type nll = 0.0;
 
     int nSurvey = survey_dates.size();
-    int nObs = obs_count.size();
 
     // Build age grid (time since birth)
     vector<Type> a_grid_shifted(N_t + 1);
@@ -182,7 +178,7 @@ Type objective_function<Type>::operator() () {
     for (int s = 0; s < nSurvey; ++s) {
         Type survey_date = survey_dates(s);
 
-        // 1) Calculate spawning weights for ages at survey s
+        //Calculate spawning weights for ages at survey s
         vector<Type> birth_dates(N_t + 1);
         for (int n = 0; n <= N_t; ++n) {
             birth_dates(n) = survey_date - a_grid_shifted(n);
