@@ -1,6 +1,41 @@
 #include <TMB.hpp>
 #include <cmath>
 
+// Helper function: Sigmoidal selectivity
+template<class Type>
+vector<Type> calculate_sigmoid_selectivity(Type l50, Type ratio,
+                                           vector<Type> l)
+{
+    Type c1 = Type(1.0);
+    Type sr = l50 * (c1 - ratio);
+    Type s1 = l50 * log(Type(3.0)) / sr;
+    Type s2 = s1 / l50;
+
+    vector<Type> Selectivity = 1/(c1 + exp(s1 - s2 * l));
+
+    // Ensure all elements are finite and >= 0
+    TMBAD_ASSERT((Selectivity.array().isFinite() && (Selectivity.array() >= 0)).all());
+
+    return Selectivity;
+}
+
+// Helper function: Knife edge selectivity
+template<class Type>
+vector<Type> calculate_knife_edge_selectivity(Type l50, Type ratio,
+                                              vector<Type> l)
+{
+    Type c1 = Type(1.0);
+    Type sr = l50 * (1.0 - 0.95); // Compute a very steep slope using ~95% of l50 as reference
+    Type s1 = l50 * log(Type(3.0)) / sr;
+    Type s2 = s1 / l50;
+
+    vector<Type> Selectivity = 1 / (c1 + exp(s1 - s2 * l));
+
+    // Ensure all elements are finite and >= 0
+    TMBAD_ASSERT((Selectivity.array().isFinite() && (Selectivity.array() >= 0)).all());
+
+    return Selectivity;
+}
 template<class Type>
 Type two_pi() { return Type(2.0) * M_PI; }
 
@@ -40,9 +75,11 @@ Type objective_function<Type>::operator() () {
   DATA_IVECTOR(obs_length_index);
   DATA_IVECTOR(obs_K);
   DATA_VECTOR(obs_count);
+  DATA_MATRIX(count_matrix);
 
   // Survey meta
-  DATA_VECTOR(survey_dates);
+  DATA_VECTOR(age_survey_dates);
+  DATA_VECTOR(freq_survey_dates);
 
   // Grids
   DATA_VECTOR(l_grid);
@@ -60,7 +97,18 @@ Type objective_function<Type>::operator() () {
   DATA_SCALAR(log_eps);
   DATA_SCALAR(vB_min_size);
 
-  // Parameters
+  //Gear selectivity
+  DATA_INTEGER(gear_type); // 0 = sigmoidal, 1 = knife-edge
+
+  // Weighting of nll contributions
+  DATA_SCALAR(age_weight);
+  DATA_SCALAR(freq_weight);
+
+  //selectivty params
+  PARAMETER(l50);
+  PARAMETER(ratio); // only used for sigmoidal gear
+
+  //life history parameters
   PARAMETER(k);
   PARAMETER(L_inf);
   PARAMETER(d);
@@ -146,15 +194,24 @@ Type objective_function<Type>::operator() () {
     for (int j = 0; j < N_l; ++j) G(n + 1, j) = next(j);
   }
 
-  int nSurvey = survey_dates.size();
+  //Calculate selectivity vector
+  vector<Type> Selectivity;
+  if(gear_type == 0){
+      Selectivity = calculate_sigmoid_selectivity(l50, ratio, l_grid);
+  } else {
+      Selectivity = calculate_knife_edge_selectivity(l50, ratio, l_grid);
+  }
+
+  int nAgeSurvey = age_survey_dates.size();
+  int nFreqSurvey = freq_survey_dates.size();
   int nObs = obs_count.size();
 
   // Spawning weights per survey and age
-  matrix<Type> spawn_w(N_t + 1, nSurvey);
+  matrix<Type> spawn_w(N_t + 1, nAgeSurvey);
   Type mu_rad = spawning_mu * two_pi<Type>();
-  for (int s = 0; s < nSurvey; ++s) {
+  for (int s = 0; s < nAgeSurvey; ++s) {
     for (int n = 0; n <= N_t; ++n) {
-      Type birth_date = survey_dates(s) - a_grid(n);
+      Type birth_date = age_survey_dates(s) - a_grid(n);
       Type day_fraction = birth_date - Type(std::floor(asDouble(birth_date)));
       Type day_rad = day_fraction * two_pi<Type>();
       spawn_w(n, s) = von_mises_pdf(day_rad, mu_rad, spawning_kappa);
@@ -162,16 +219,16 @@ Type objective_function<Type>::operator() () {
   }
 
   // K(a) per survey (depends on annuli_min_age)
-  matrix<int> K_of_age(N_t + 1, nSurvey);
-  for (int s = 0; s < nSurvey; ++s) {
+  matrix<int> K_of_age(N_t + 1, nAgeSurvey);
+  for (int s = 0; s < nAgeSurvey; ++s) {
     for (int n = 0; n <= N_t; ++n) {
-      K_of_age(n, s) = calculate_K_for_age(a_grid(n), survey_dates(s), annuli_date, annuli_min_age);
+      K_of_age(n, s) = calculate_K_for_age(a_grid(n), age_survey_dates(s), annuli_date, annuli_min_age);
     }
   }
 
   // Denominator per (survey, length): sum over ages spawn_w * G
-  matrix<Type> denom_sum(nSurvey, N_l);
-  for (int s = 0; s < nSurvey; ++s) {
+  matrix<Type> denom_sum(nAgeSurvey, N_l);
+  for (int s = 0; s < nAgeSurvey; ++s) {
     for (int j = 0; j < N_l; ++j) denom_sum(s, j) = Type(0);
     for (int n = 0; n <= N_t; ++n) {
       Type w = spawn_w(n, s);
@@ -180,7 +237,8 @@ Type objective_function<Type>::operator() () {
   }
 
   // NLL accumulation over observed cells only
-  Type nll = Type(0);
+  Type age_nll = Type(0);
+
   for (int idx = 0; idx < nObs; ++idx) {
     int s = obs_survey_index(idx) - 1;
     int j = obs_length_index(idx) - 1;
@@ -190,7 +248,63 @@ Type objective_function<Type>::operator() () {
     Type den = denom_sum(s, j);
     Type p = num / den;
     Type logp = CppAD::log(p + CppAD::exp(log_eps));
-    nll -= obs_count(idx) * logp;
+    age_nll -= obs_count(idx) * logp;
+  }
+
+  Type freq_nll = Type(0);
+
+  // Build age grid (time since birth)
+  vector<Type> a_grid_shifted(N_t + 1);
+  for (int i = 0; i <= N_t; ++i) {
+      a_grid_shifted(i) = a_grid(i);
+  }
+
+  // Loop over each survey date
+  for (int s = 0; s < nFreqSurvey; ++s) {
+      Type survey_date = freq_survey_dates(s);
+
+      // 1) Calculate spawning weights for ages at survey s
+      vector<Type> birth_dates(N_t + 1);
+      for (int n = 0; n <= N_t; ++n) {
+          birth_dates(n) = survey_date - a_grid_shifted(n);
+      }
+
+      vector<Type> spawning_weights(N_t + 1);
+      Type mu_rad = spawning_mu * two_pi<Type>();
+      for (int n = 0; n <= N_t; ++n) {
+          Type day_fraction = birth_dates(n) - floor(asDouble(birth_dates(n)));
+          Type day_rad = day_fraction * two_pi<Type>();
+          spawning_weights(n) = von_mises_pdf(day_rad, mu_rad, spawning_kappa);
+      }
+
+      // Calculate population at survey s: convolve spawning weights and G
+      // P(l, t) = sum all as together->N_t {G(a, l)* S(s - a)}
+      // Calculate population at survey s: convolve spawning weights and G
+      // G: (N_t+1) x N_l  (rows = ages/time, cols = length bins)
+      // N_pop: column vector length N_l
+      vector<Type> N_pop(N_l);
+      N_pop.setZero();
+
+      // Use .row(n).transpose() to produce a column vector, and
+      // use .array() to ensure element-wise addition (no array/matrix mix).
+      for (int n = 0; n <= N_t; ++n) {
+          N_pop.array() += (spawning_weights(n) * G.row(n).transpose().array());
+      }
+      N_pop *= Delta_t;
+
+      // Apply selectivity elementwise (use .array() or cwiseProduct)
+      vector<Type> V_pop = N_pop.array() * Selectivity.array();
+
+      // Normalize to get probabilities
+      Type sum_V = V_pop.sum() + Type(1e-12);
+      vector<Type> prob = V_pop / sum_V;
+
+      // Calculate multinomial negative log-likelihood for survey s
+      vector<Type> counts(N_l);
+      for (int l = 0; l < N_l; ++l) {
+          counts(l) = count_matrix(s, l);
+      }
+      freq_nll -= dmultinom(counts, prob, true);
   }
 
   ADREPORT(k);
@@ -199,7 +313,7 @@ Type objective_function<Type>::operator() () {
   ADREPORT(m);
   ADREPORT(r);
 
-  return nll;
+  return age_weight * age_nll + freq_weight * freq_nll;
 }
 
 
