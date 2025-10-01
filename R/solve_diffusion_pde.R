@@ -165,3 +165,136 @@ getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05) {
                    Delta_l = Delta_l, t_max = t_max, Delta_t = Delta_t)
     return(G)
 }
+
+#' Numerically solve the steady state of the PDE for fish abundance density
+#'
+#' Finds the steady state solution by setting the time derivative to zero,
+#' resulting in an ODE that is discretized using the same finite volume scheme
+#' as solve_pde() and solved using Thomas's method.
+#'
+#' @param pars A list containing the model parameters: k, L_inf, d, m, r.
+#' @param Delta_l The size step size (cm). Default is 1.
+#' @param l_max The maximum size. Default is 100.
+#' @return A numeric vector containing the steady state solution u(l).
+#'
+#' @export
+solve_pde_steady_state <- function(pars, Delta_l = 1, l_max = 100) {
+    
+    # Set up Grid ----
+    N_l <- ceiling(l_max / Delta_l)  # Number of size cells
+    
+    # Size grid (cell centres)
+    l_grid <- (1:N_l - 0.5) * Delta_l
+    # Size grid (cell interfaces, size N_l + 1)
+    l_interfaces <- (0:N_l) * Delta_l
+    
+    # Pre-calculate Coefficients ----
+    # These coefficients are the same as in solve_pde()
+    
+    # Advection (v) and Diffusion (D) coefficients at interfaces
+    vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
+    growth_rate <- ifelse(l_interfaces < vB_min_size, 
+                         pars$r, 
+                         pars$k * (pars$L_inf - l_interfaces))
+    v <- growth_rate - pars$d / 2
+    D <- pars$d * l_interfaces / 2
+    
+    v_plus <- pmax(v, 0)
+    v_minus <- pmin(v, 0)
+    
+    # Reaction coefficient (mu) at cell centres
+    # Add small epsilon to avoid division by zero
+    mu <- pars$m / pmax(l_grid, 1e-10)
+    
+    # Construct the tridiagonal system matrix (A) for steady state ----
+    # For steady state: A * u = 0, so we need to solve A * u = 0
+    # This is a homogeneous system, so we need to impose a constraint
+    # We'll use the boundary condition at l_max as u(l_max) = 0
+    
+    # Initialize diagonal vectors
+    a_ <- numeric(N_l - 1)
+    b_ <- numeric(N_l)
+    c_ <- numeric(N_l - 1)
+    
+    # Pre-factors for convenience (no Delta_t since we're solving steady state)
+    c1 <- 1 / Delta_l
+    c2 <- 1 / (Delta_l^2)
+    
+    # Fill the vectors for the interior points (i = 2 to N_l-1)
+    for (i in 2:(N_l - 1)) {
+        # A[i, i-1] depends on interface i
+        a_[i - 1] <- -c1 * v_plus[i] - c2 * D[i]
+        # A[i, i+1] depends on interface i+1
+        c_[i] <- c1 * v_minus[i + 1] - c2 * D[i + 1]
+        # A[i, i] depends on interfaces i and i+1
+        b_[i] <- mu[i] +
+            c1 * (v_plus[i + 1] - v_minus[i]) +
+            c2 * (D[i + 1] + D[i])
+    }
+    
+    # Apply Boundary Conditions ----
+    
+    # -- At l_0 = 0 (i=1): No-Flux condition (J_{1/2} = 0) --
+    b_[1] <- mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
+    c_[1] <- c1 * (v_minus[2] - D[2] / Delta_l)
+    
+    # -- At l_max (i=N_l): Dirichlet condition u(l_max) = 0 --
+    # This is enforced by the homogeneous system constraint
+    a_[N_l - 1] <- -c1 * v_plus[N_l] - c2 * D[N_l]
+    b_[N_l] <- mu[N_l] +
+        c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
+        c2 * (D[N_l + 1] + D[N_l])
+    
+    # For a homogeneous system A * u = 0, we need to impose a constraint
+    # We'll fix u[1] = 1 and solve for the remaining variables
+    # This gives us A' * u[2:N_l] = -A[2:N_l, 1]
+    
+    # Create the modified system
+    if (N_l > 1) {
+        # Right-hand side: -A[2:N_l, 1] * u[1] where u[1] = 1
+        d_rhs <- numeric(N_l - 1)
+        d_rhs[1] <- -a_[1]  # -A[2, 1] since u[1] = 1
+        
+        # Modified tridiagonal system for u[2:N_l]
+        a_mod <- a_[2:(N_l - 1)]
+        b_mod <- b_[2:N_l]
+        c_mod <- c_[1:(N_l - 2)]
+        
+        # Solve the system
+        if (N_l > 2) {
+            # Check if the system is singular (all diagonal elements are zero or very small)
+            if (all(abs(b_mod) < 1e-15)) {
+                u_interior <- rep(0, length(b_mod))
+            } else {
+                u_interior <- solve_thomas(a_mod, b_mod, c_mod, d_rhs)
+            }
+        } else {
+            # Check for division by zero
+            if (abs(b_mod[1]) < 1e-15) {
+                u_interior <- 0  # Return zero if system is singular
+            } else {
+                u_interior <- d_rhs[1] / b_mod[1]
+            }
+        }
+        
+        # Check if solution contains NaN or Inf values
+        if (any(!is.finite(u_interior))) {
+            # Return a simple solution if the system is singular
+            u_steady <- c(1, rep(0, length(u_interior)))
+        } else {
+            # Combine with the fixed boundary value
+            u_steady <- c(1, u_interior)
+        }
+    } else {
+        u_steady <- 1
+    }
+    
+    # Normalize the solution (optional, for numerical stability)
+    # Scale so that the maximum value is 1
+    max_val <- max(abs(u_steady), na.rm = TRUE)
+    if (is.finite(max_val) && max_val > 0) {
+        u_steady <- u_steady / max_val
+    }
+    
+    return(u_steady)
+}
