@@ -1,11 +1,5 @@
 test_that("TMB nll matches NLL computed from getLogLik()", {
-    # Synthetic minimal dataset with two surveys and a few observations
-    surveys <- data.frame(
-        survey_date = c(2020.25, 2020.25, 2021.10, 2021.10, 2021.10),
-        Length = c(20L, 21L, 20L, 21L, 22L),
-        K = c(0L, 1L, 0L, 1L, 1L),
-        count = c(10, 5, 7, 8, 3)
-    )
+    surveys <- Cod_CS_age_at_length
 
     # Common discretisation to keep both paths consistent
     Delta_l <- 1

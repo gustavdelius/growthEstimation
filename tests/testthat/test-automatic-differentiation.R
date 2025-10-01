@@ -49,13 +49,7 @@ compute_finite_difference_gradient <- function(obj, par, h = 1e-6) {
 # Helper function to create test data and TMB object
 create_test_tmb_object <- function(pars, surveys = NULL) {
   if (is.null(surveys)) {
-    # Create synthetic minimal dataset
-    surveys <- data.frame(
-      survey_date = c(2020.25, 2020.25, 2021.10, 2021.10, 2021.10),
-      Length = c(20L, 21L, 20L, 21L, 22L),
-      K = c(0L, 1L, 0L, 1L, 1L),
-      count = c(10, 5, 7, 8, 3)
-    )
+    surveys <- Cod_CS_age_at_length
   }
 
   # Common discretisation
