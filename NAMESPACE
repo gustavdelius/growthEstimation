@@ -3,6 +3,7 @@
 export(calculate_K)
 export(calculate_and_aggregate_likelihood)
 export(fit_on_simulated_data)
+export(fit_tmb_length_freq)
 export(fit_tmb_nll)
 export(generate_model_predictions_for_date)
 export(getGreens)

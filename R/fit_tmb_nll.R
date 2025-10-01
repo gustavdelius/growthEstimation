@@ -22,7 +22,7 @@ fit_tmb_nll <- function(
     length_freq,
     age_weight = 1,
     freq_weight = 1,
-    gear_type= 0,
+    gear_type = 0,
     Delta_l = 1,
     Delta_t = 0.05,
     lower = c(),
@@ -63,9 +63,9 @@ fit_tmb_nll <- function(
     # Map observed Length to nearest grid cell index
     length_index <- pmax(1L, pmin(N_l, as.integer(floor(age_at_length$Length / Delta_l + 0.5))))
 
-    # Unique surveys and indexing
-    survey_levels <- sort(unique(age_at_length$survey_date))
-    survey_index <- match(age_at_length$survey_date, survey_levels)
+    # Unique surveys and indexing for age at length
+    survey_levels_age <- sort(unique(age_at_length$survey_date))
+    survey_index <- match(age_at_length$survey_date, survey_levels_age)
 
     # Observations as vectors, aggregated
     obs_df <- data.frame(
@@ -80,43 +80,43 @@ fit_tmb_nll <- function(
     obs_K <- as.integer(obs_df$K)
     obs_count <- as.numeric(obs_df$count)
 
-    # Function to build zero-padded count_matrix
-    build_count_matrix <- function(surveys, l_grid) {
-        survey_levels <- sort(unique(surveys$survey_date))
-        nSurvey <- length(survey_levels)
+    #Create matrix for length freq data, currently only works with Delta_l = 1
+    #cm if Delta_l does not = 1 cm and the survey is not in 1 cm bins
+    #then this code will not function properly
 
-        # Map survey dates to indices (0-based for TMB)
-        obs_survey_index <- match(surveys$survey_date, survey_levels) - 1L
+    library(dplyr)
+    library(tidyr)
+    # survey dates and max length
+    survey_levels_freq <- sort(unique(surveys$survey_date))
 
-        # Map lengths to shared grid
-        obs_length_index <- as.integer(floor(surveys$Length / Delta_l + 0.5) - 1L)
+    # full grid of survey_date x Length
+    grid <- expand.grid(
+        survey_date = survey_levels_freq,
+        Length = 0:(l_max-1)
+    )
 
-        # Build zero-padded count matrix
-        count_matrix <- matrix(0, nrow = nSurvey, ncol = length(l_grid))
-        for (i in seq_len(nrow(surveys))) {
-            s <- obs_survey_index[i] + 1L
-            l <- obs_length_index[i] + 1L
-            count_matrix[s, l] <- count_matrix[s, l] + surveys$count[i]
-        }
-        storage.mode(count_matrix) <- "double"
+    # aggregate counts (sum over duplicates)
+    survey_counts <- surveys %>%
+        group_by(survey_date, Length) %>%
+        summarise(count = sum(count), .groups = "drop")
 
-        # Prepare observation vectors for TMB
-        obs_df <- data.frame(
-            s = obs_survey_index + 1L,
-            l = obs_length_index + 1L,
-            count = surveys$count
+    # merge counts into full grid, fill missing with 0
+    survey_grid <- grid %>%
+        left_join(survey_counts, by = c("survey_date", "Length")) %>%
+        mutate(count = replace_na(count, 0))
+
+    # reshape to wide matrix
+    count_matrix <- survey_grid %>%
+        pivot_wider(
+            names_from = Length,
+            values_from = count,
+            values_fill = 0
         )
-        obs_df <- stats::aggregate(count ~ s + l, data = obs_df, sum)
 
-        list(
-            count_matrix = count_matrix,
-            obs_survey_index = as.integer(obs_df$s - 1L),
-            obs_length_index = as.integer(obs_df$l - 1L),
-            obs_count = as.numeric(obs_df$count),
-            survey_levels = survey_levels
-        )
-    }
-    lf_data <- build_count_matrix(length_freq, l_grid)
+    # convert to plain matrix with proper dimnames
+    count_matrix <- as.matrix(count_matrix[-1])
+    rownames(count_matrix) <- survey_levels_freq
+    colnames(count_matrix) <- 0:(l_max-1)
 
     # Prepare TMB data and parameters
     tmb_data <- list(
@@ -124,9 +124,9 @@ fit_tmb_nll <- function(
         obs_length_index = obs_length_index,
         obs_K = obs_K,
         obs_count = obs_count,
-        count_matrix = lf_data$count_matrix,
-        age_survey_dates = as.numeric(survey_levels),
-        freq_survey_dates = as.numeric(lf_data$survey_levels),
+        count_matrix = count_matrix,
+        age_survey_dates = as.numeric(survey_levels_age),
+        freq_survey_dates = as.numeric(survey_levels_freq),
         age_weight = age_weight,
         freq_weight = freq_weight,
         l_grid = as.numeric(l_grid),
@@ -190,6 +190,3 @@ fit_tmb_nll <- function(
         data = tmb_data
     )
 }
-
-
-
