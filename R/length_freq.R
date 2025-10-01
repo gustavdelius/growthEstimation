@@ -12,9 +12,10 @@
 #' @return A list with updated `pars`, optimizer result, sdreport, obj, and data
 #'   used.
 #' @export
-fit_tmb_nll <- function(
+fit_tmb_length_freq <- function(
         pars,
         surveys,
+        gear_type=0,
         Delta_l = 1,
         Delta_t = 0.05,
         lower = c(),
@@ -102,7 +103,7 @@ fit_tmb_nll <- function(
     obj <- TMB::MakeADFun(
         data = tmb_data,
         parameters = tmb_parameters,
-        DLL = "length_freq",
+        DLL = "growthEstimation",
         silent = TRUE
     )
 
