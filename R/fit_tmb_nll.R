@@ -87,7 +87,7 @@ fit_tmb_nll <- function(
     library(dplyr)
     library(tidyr)
     # survey dates and max length
-    survey_levels_freq <- sort(unique(surveys$survey_date))
+    survey_levels_freq <- sort(unique(length_freq$survey_date))
 
     # full grid of survey_date x Length
     grid <- expand.grid(
@@ -96,7 +96,7 @@ fit_tmb_nll <- function(
     )
 
     # aggregate counts (sum over duplicates)
-    survey_counts <- surveys %>%
+    survey_counts <- length_freq%>%
         group_by(survey_date, Length) %>%
         summarise(count = sum(count), .groups = "drop")
 
