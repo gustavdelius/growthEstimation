@@ -47,15 +47,22 @@ compute_finite_difference_gradient <- function(obj, par, h = 1e-6) {
 }
 
 # Helper function to create test data and TMB object
-create_test_tmb_object <- function(pars, surveys = NULL) {
-  if (is.null(surveys)) {
-    # Create synthetic minimal dataset
-    surveys <- data.frame(
+create_test_tmb_object <- function(pars, age_at_length = NULL, length_freq = NULL) {
+  if (is.null(age_at_length)) {
+    # Create synthetic minimal age-at-length dataset
+    age_at_length <- data.frame(
       survey_date = c(2020.25, 2020.25, 2021.10, 2021.10, 2021.10),
       Length = c(20L, 21L, 20L, 21L, 22L),
       K = c(0L, 1L, 0L, 1L, 1L),
       count = c(10, 5, 7, 8, 3)
     )
+  }
+
+  if (is.null(length_freq)) {
+    # Derive a simple length-frequency dataset by aggregating age_at_length over K
+    length_freq <- age_at_length |>
+      dplyr::group_by(survey_date, Length) |>
+      dplyr::summarise(count = sum(count), .groups = "drop")
   }
 
   # Common discretisation
@@ -65,7 +72,8 @@ create_test_tmb_object <- function(pars, surveys = NULL) {
   # Create TMB object
   tmb_result <- fit_tmb_nll(
     pars = pars,
-    surveys = surveys,
+    age_at_length = age_at_length,
+    length_freq = length_freq,
     Delta_l = Delta_l,
     Delta_t = Delta_t
   )
@@ -81,6 +89,8 @@ test_that("TMB automatic differentiation gradients match finite differences", {
     d = 0.2,
     m = 20,
     r = 0.3,
+    l50 = 30,
+    ratio = 0.5,
     spawning_mu = 0.4,
     spawning_kappa = 3,
     annuli_date = 0.25,
@@ -119,19 +129,19 @@ test_that("Gradient consistency holds for different parameter values", {
   test_pars_list <- list(
     # Original parameters
     list(
-      k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
+      k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3, l50 = 30, ratio = 0.5,
       spawning_mu = 0.4, spawning_kappa = 3,
       annuli_date = 0.25, annuli_min_age = 0.5
     ),
     # Different growth parameters
     list(
-      k = 0.3, L_inf = 100, d = 0.1, m = 15, r = 0.2,
+      k = 0.3, L_inf = 100, d = 0.1, m = 15, r = 0.2, l50 = 35, ratio = 0.6,
       spawning_mu = 0.4, spawning_kappa = 3,
       annuli_date = 0.25, annuli_min_age = 0.5
     ),
     # Different spawning parameters
     list(
-      k = 0.4, L_inf = 90, d = 0.15, m = 25, r = 0.4,
+      k = 0.4, L_inf = 90, d = 0.15, m = 25, r = 0.4, l50 = 28, ratio = 0.4,
       spawning_mu = 0.6, spawning_kappa = 2,
       annuli_date = 0.25, annuli_min_age = 0.5
     )
@@ -156,7 +166,7 @@ test_that("Gradient consistency holds for different parameter values", {
 
 test_that("Gradient consistency for individual parameters", {
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3, l50 = 30, ratio = 0.5,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
@@ -189,7 +199,7 @@ test_that("Gradient consistency for individual parameters", {
 
 test_that("Gradient consistency with different step sizes", {
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3, l50 = 30, ratio = 0.5,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
@@ -245,7 +255,7 @@ test_that("Gradient consistency with different survey data", {
   )
 
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3, l50 = 30, ratio = 0.5,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
@@ -253,10 +263,15 @@ test_that("Gradient consistency with different survey data", {
   for (i in seq_along(survey_datasets)) {
     surveys <- survey_datasets[[i]]
 
+    # Build matching length-frequency by aggregating over K
+    length_freq <- surveys |>
+      dplyr::group_by(survey_date, Length) |>
+      dplyr::summarise(count = sum(count), .groups = "drop")
+
     # Create TMB object with this survey data
     # Suppress warnings from TMB::sdreport() which may fail for some parameter combinations
     suppressWarnings({
-      obj <- create_test_tmb_object(pars, surveys)
+      obj <- create_test_tmb_object(pars, age_at_length = surveys, length_freq = length_freq)
     })
     test_par <- obj$par
 
@@ -283,7 +298,7 @@ test_that("Gradient consistency with different survey data", {
 
 test_that("Gradient magnitude and sign consistency", {
   pars <- list(
-    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3,
+    k = 0.5, L_inf = 80, d = 0.2, m = 20, r = 0.3, l50 = 30, ratio = 0.5,
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
