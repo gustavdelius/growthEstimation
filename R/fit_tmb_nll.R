@@ -84,8 +84,6 @@ fit_tmb_nll <- function(
     #cm if Delta_l does not = 1 cm and the survey is not in 1 cm bins
     #then this code will not function properly
 
-    library(dplyr)
-    library(tidyr)
     # survey dates and max length
     survey_levels_freq <- sort(unique(length_freq$survey_date))
 

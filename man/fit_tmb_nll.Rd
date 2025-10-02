@@ -6,7 +6,11 @@
 \usage{
 fit_tmb_nll(
   pars,
-  surveys,
+  age_at_length,
+  length_freq,
+  age_weight = 1,
+  freq_weight = 1,
+  gear_type = 0,
   Delta_l = 1,
   Delta_t = 0.05,
   lower = c(),
@@ -16,7 +20,15 @@ fit_tmb_nll(
 \arguments{
 \item{pars}{List of parameters}
 
-\item{surveys}{Data frame with columns survey_date (numeric), Length, K, count.}
+\item{age_at_length}{Data frame with columns survey_date (numeric), Length, K, count.}
+
+\item{length_freq}{Data frame with columns survey_date (numeric), Length, and count.}
+
+\item{age_weight}{Weight given to the age_at_length data}
+
+\item{freq_weight}{Weight given to the size frequency data}
+
+\item{gear_type}{Sigmoidal (0) and knife edge (1) are the only supported types, default 0.}
 
 \item{Delta_l}{Numeric size step (cm), default 1.}
 
@@ -31,6 +43,6 @@ A list with updated \code{pars}, optimizer result, sdreport, obj, and data
 used.
 }
 \description{
-Optimizes k, L_inf, d, m, and r using nlminb().
+Optimizes k, L_inf, d, m, r, l50 and l25/l50 using nlminb().
 Spawning parameters, annuli_date, and annuli_min_age are treated as data.
 }
