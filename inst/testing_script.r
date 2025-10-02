@@ -69,6 +69,7 @@ l
 model<-sweep(spectra, 2, selectivity, '*')
 # Join survey data to this sequence
 
+all_lengths<-tibble(Length=l)
 survey1<-length_freq %>%
     filter(near(survey_date, 1/24))
 survey1$normcount<-survey1$count/(sum(survey1$count))
