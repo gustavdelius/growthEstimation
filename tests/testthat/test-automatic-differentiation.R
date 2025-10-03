@@ -218,21 +218,21 @@ test_that("Gradient consistency with different survey data", {
     # Original dataset
     data.frame(
       survey_date = c(2020.25, 2020.25, 2021.10, 2021.10, 2021.10),
-      Length = c(20L, 21L, 20L, 21L, 22L),
+      length = c(20L, 21L, 20L, 21L, 22L),
       K = c(0L, 1L, 0L, 1L, 1L),
       count = c(10, 5, 7, 8, 3)
     ),
     # Larger dataset
     data.frame(
       survey_date = c(2020.25, 2020.25, 2020.25, 2021.10, 2021.10, 2021.10, 2022.5),
-      Length = c(20L, 21L, 22L, 20L, 21L, 22L, 23L),
+      length = c(20L, 21L, 22L, 20L, 21L, 22L, 23L),
       K = c(0L, 1L, 1L, 0L, 1L, 1L, 2L),
       count = c(10, 5, 3, 7, 8, 3, 2)
     ),
     # Single survey
     data.frame(
       survey_date = c(2020.5),
-      Length = c(20L),
+      length = c(20L),
       K = c(0L),
       count = c(15)
     )

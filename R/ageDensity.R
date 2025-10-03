@@ -40,7 +40,7 @@ calculate_K <- function(age_in_years, survey_date, annuli_date, annuli_min_age) 
 #' @param kappa Spawning concentration parameter.
 #' @param annuli_date Ring formation day as fraction of a year in \[0, 1).
 #' @param annuli_min_age Minimum age (years) at which the first ring can form.
-#' @return A matrix of probabilities P(K|l) with rows named by `Length` and columns
+#' @return A matrix of probabilities P(K|l) with rows named by `length` and columns
 #'   by `K`.
 #' @export
 #' @examples
@@ -62,7 +62,7 @@ generate_model_predictions_for_date <- function(
     max_K <- max(k_for_each_age)
     k_bins <- 0:max_K
     N_model <- matrix(0, nrow = length(l), ncol = length(k_bins))
-    dimnames(N_model) <- list(Length = l, K = k_bins)
+    dimnames(N_model) <- list(length = l, K = k_bins)
 
     for (k_val in k_bins) {
         age_indices <- which(k_for_each_age == k_val)
@@ -83,9 +83,9 @@ generate_model_predictions_for_date <- function(
 #' Loops through age_at_length, calculates signed NLL for each, and aggregates the
 #' results.
 #' @param age_at_length A data frame with survey age-at-length observations with
-#'   columns `survey_date`, `Length`, `K`, and `count`.
+#'   columns `survey_date`, `length`, `K`, and `count`.
 #' @inheritParams generate_model_predictions_for_date
-#' @return A data frame containing, for each observed Length-K bin in each
+#' @return A data frame containing, for each observed length-K bin in each
 #'   survey, the observed count, expected count under the model, model
 #'   probability, sample size, negative log-likelihood contribution, and signed
 #'   negative log-likelihood contribution.
@@ -93,7 +93,7 @@ generate_model_predictions_for_date <- function(
 calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa,
                                                annuli_date, annuli_min_age) {
     # Declare variables to avoid R CMD check warnings
-    Length <- K <- N <- Prob <- Expected <- NegLogLik <- SignedNegLogLik <-
+    length <- K <- N <- Prob <- Expected <- NegLogLik <- SignedNegLogLik <-
         TotalObserved <- TotalExpected <- TotalNegLogLik <- count <- NULL
 
     # Split the data frame by unique survey date
@@ -114,7 +114,7 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
         # 2. Get sample sizes per length for this survey
 
         sample_sizes <- current_obs_df |>
-            group_by(Length) |>
+            group_by(length) |>
             summarise(N = sum(count, na.rm = TRUE), .groups = 'drop')
 
         # 3. Convert model probabilities to a long data frame for joining
@@ -122,8 +122,8 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
 
         # 4. Join all data together
         likelihood_df <- current_obs_df |>
-            left_join(sample_sizes, by = "Length") |>
-            left_join(P_model_df, by = c("Length", "K"))
+            left_join(sample_sizes, by = "length") |>
+            left_join(P_model_df, by = c("length", "K"))
 
         # 5. Calculate the signed negative log-likelihood contribution
         epsilon <- 1e-9 # To prevent log(0)
@@ -141,7 +141,7 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
     all_contributions_df <- do.call(rbind, log_lik_contributions)
 
     total_contributions <- all_contributions_df |>
-        group_by(Length, K) |>
+        group_by(length, K) |>
         summarise(
             TotalObserved = sum(count, na.rm = TRUE),
             TotalExpected = sum(Expected, na.rm = TRUE),
@@ -162,27 +162,27 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
 #' Draws K values using multinomial sampling with probabilities P(K | length)
 #' for each length observed in a given survey.
 #' @param P_model_K_given_l Matrix of predicted probabilities P(K | length).
-#' @param survey_obs A data frame for one survey with at least a `Length` column.
+#' @param survey_obs A data frame for one survey with at least a `length` column.
 #' @return An integer vector of simulated K values aligned with `survey_obs` rows.
 #' @export
 #' @examples
 #' set.seed(1)
 #' P <- matrix(c(0.7, 0.3, 0.2, 0.8), nrow = 2, byrow = TRUE)
 #' rownames(P) <- c("20", "30"); colnames(P) <- c("0", "1")
-#' survey_obs <- data.frame(Length = c(20, 20, 30, 30, 30))
+#' survey_obs <- data.frame(length = c(20, 20, 30, 30, 30))
 #' simulate_sample_from_model(P, survey_obs)
 simulate_sample_from_model <- function(P_model_K_given_l, survey_obs) {
     simulated_K <- integer(nrow(survey_obs))
 
     # Get the unique length classes that were actually sampled in this survey
-    unique_lengths <- unique(survey_obs$Length)
+    unique_lengths <- unique(survey_obs$length)
 
     # Get the possible K values from the column names of the proportion matrix.
     k_values <- as.numeric(colnames(P_model_K_given_l))
 
     # For each unique length class...
     for (len_val in unique_lengths) {
-        indices_to_fill <- which(survey_obs$Length == len_val)
+        indices_to_fill <- which(survey_obs$length == len_val)
         n_fish <- length(indices_to_fill)
         len_char <- as.character(len_val)
 

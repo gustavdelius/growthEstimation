@@ -6,15 +6,15 @@
 #' @return A ggplot object.
 plot_log_likelihood <- function(contributions_df) {
     # Declare variables to avoid R CMD check warnings
-    Length <- K <- TotalObserved <- TotalExpected <- SignedNegLogLik <- MeanK <- Source <- NULL
+    length <- K <- TotalObserved <- TotalExpected <- SignedNegLogLik <- MeanK <- Source <- NULL
 
     # Convert factors to numeric for plotting
-    contributions_df$Length <- as.numeric(as.character(contributions_df$Length))
+    contributions_df$length <- as.numeric(as.character(contributions_df$length))
     contributions_df$K <- as.numeric(as.character(contributions_df$K))
 
     # Calculate mean K lines ---
     mean_lines_df <- contributions_df |>
-        group_by(Length) |>
+        group_by(length) |>
         summarise(
             # Weighted mean of K by the number of observed/expected fish
             Observed = sum(K * TotalObserved) / sum(TotalObserved),
@@ -35,7 +35,7 @@ plot_log_likelihood <- function(contributions_df) {
     total_nll <- sum(contributions_df$TotalNegLogLik, na.rm = TRUE)
     
     # Create the plot
-    p <- ggplot(contributions_df, aes(x = Length, y = K)) +
+    p <- ggplot(contributions_df, aes(x = length, y = K)) +
         # Heatmap layer for the misfit
         geom_tile(aes(fill = SignedNegLogLik)) +
         # Line layers for the mean K values
@@ -64,7 +64,7 @@ plot_log_likelihood <- function(contributions_df) {
         labs(
             title = "Model Fit Diagnostic",
             subtitle = paste0("Color shows direction (Blue: Obs > Exp, Red: Obs < Exp). Intensity shows magnitude of misfit.\nTotal NLL = ", sprintf("%.2f", total_nll)),
-            x = "Fish Length (cm)",
+            x = "Fish length (cm)",
             y = "Annuli Count (K)"
         ) +
         theme_minimal()

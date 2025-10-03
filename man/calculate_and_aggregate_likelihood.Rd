@@ -17,7 +17,7 @@ calculate_and_aggregate_likelihood(
 }
 \arguments{
 \item{age_at_length}{A data frame with survey age-at-length observations with
-columns \code{survey_date}, \code{Length}, \code{K}, and \code{count}.}
+columns \code{survey_date}, \code{length}, \code{K}, and \code{count}.}
 
 \item{G}{Greens function matrix (rows = ages, cols = length classes).}
 
@@ -34,7 +34,7 @@ columns \code{survey_date}, \code{Length}, \code{K}, and \code{count}.}
 \item{annuli_min_age}{Minimum age (years) at which the first ring can form.}
 }
 \value{
-A data frame containing, for each observed Length-K bin in each
+A data frame containing, for each observed length-K bin in each
 survey, the observed count, expected count under the model, model
 probability, sample size, negative log-likelihood contribution, and signed
 negative log-likelihood contribution.

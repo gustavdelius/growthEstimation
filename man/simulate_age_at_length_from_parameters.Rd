@@ -29,7 +29,7 @@ survey. If a single integer, it is recycled for all lengths and age_at_length.}
 \item{Delta_t}{Numeric time step (years). Default 0.05.}
 }
 \value{
-Data frame with columns \code{survey_date}, \code{Length}, \code{K}, \code{count}.
+Data frame with columns \code{survey_date}, \code{length}, \code{K}, \code{count}.
 }
 \description{
 Generates multinomial samples of annuli counts K for specified age_at_length and

@@ -33,7 +33,7 @@ generate_model_predictions_for_date(
 \item{annuli_min_age}{Minimum age (years) at which the first ring can form.}
 }
 \value{
-A matrix of probabilities P(K|l) with rows named by \code{Length} and columns
+A matrix of probabilities P(K|l) with rows named by \code{length} and columns
 by \code{K}.
 }
 \description{

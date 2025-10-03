@@ -10,14 +10,14 @@ getLogLik(pars, age_at_length, Delta_l = 1, Delta_t = 0.05)
 \item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
 \item{age_at_length}{A data frame with survey age-at-length observations with
-columns \code{survey_date}, \code{Length}, \code{K}, and \code{count}.}
+columns \code{survey_date}, \code{length}, \code{K}, and \code{count}.}
 
 \item{Delta_l}{Width of size bins (cm). Default is 1.}
 
 \item{Delta_t}{Time step for the model simulation (years). Default is 0.05.}
 }
 \value{
-A data frame with, for each observed Length-K bin in each survey, the
+A data frame with, for each observed length-K bin in each survey, the
 observed count, expected count under the model, model probability, sample
 size, negative log-likelihood contribution, and signed negative
 log-likelihood contribution.

@@ -3,7 +3,7 @@
 #' @format A data frame with 329 rows and 4 columns. The columns ae:
 #' \describe{
 #'   \item{survey_date}{The within-year date of the survey (decimal year)}
-#'   \item{Length}{Length (cm)}
+#'   \item{length}{length (cm)}
 #'   \item{K}{Number of observed annuli}
 #'   \item{count}{Number of fish observed with given length and annuli}
 #' }
