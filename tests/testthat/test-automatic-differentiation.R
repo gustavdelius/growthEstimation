@@ -47,9 +47,9 @@ compute_finite_difference_gradient <- function(obj, par, h = 1e-6) {
 }
 
 # Helper function to create test data and TMB object
-create_test_tmb_object <- function(pars, surveys = NULL) {
-  if (is.null(surveys)) {
-    surveys <- Cod_CS_age_at_length
+create_test_tmb_object <- function(pars, age_at_length = NULL) {
+  if (is.null(age_at_length)) {
+    age_at_length <- Cod_CS_age_at_length
   }
 
   # Common discretisation
@@ -59,7 +59,7 @@ create_test_tmb_object <- function(pars, surveys = NULL) {
   # Create TMB object
   tmb_result <- fit_tmb_nll(
     pars = pars,
-    surveys = surveys,
+    age_at_length = age_at_length,
     Delta_l = Delta_l,
     Delta_t = Delta_t
   )
@@ -245,12 +245,12 @@ test_that("Gradient consistency with different survey data", {
   )
 
   for (i in seq_along(survey_datasets)) {
-    surveys <- survey_datasets[[i]]
+    age_at_length <- survey_datasets[[i]]
 
     # Create TMB object with this survey data
     # Suppress warnings from TMB::sdreport() which may fail for some parameter combinations
     suppressWarnings({
-      obj <- create_test_tmb_object(pars, surveys)
+      obj <- create_test_tmb_object(pars, age_at_length)
     })
     test_par <- obj$par
 

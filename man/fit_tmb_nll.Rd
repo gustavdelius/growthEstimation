@@ -6,7 +6,7 @@
 \usage{
 fit_tmb_nll(
   pars,
-  surveys,
+  age_at_length,
   Delta_l = 1,
   Delta_t = 0.05,
   lower = c(),
@@ -16,7 +16,7 @@ fit_tmb_nll(
 \arguments{
 \item{pars}{List of parameters}
 
-\item{surveys}{Data frame with columns survey_date (numeric), Length, K, count.}
+\item{age_at_length}{Data frame with columns survey_date (numeric), Length, K, count.}
 
 \item{Delta_l}{Numeric size step (cm), default 1.}
 

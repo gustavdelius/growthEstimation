@@ -5,7 +5,7 @@
 \title{Calculate and Aggregate Signed Log-Likelihood Contributions}
 \usage{
 calculate_and_aggregate_likelihood(
-  surveys,
+  age_at_length,
   G,
   a,
   l,
@@ -16,7 +16,7 @@ calculate_and_aggregate_likelihood(
 )
 }
 \arguments{
-\item{surveys}{A data frame with survey age-at-length observations with
+\item{age_at_length}{A data frame with survey age-at-length observations with
 columns \code{survey_date}, \code{Length}, \code{K}, and \code{count}.}
 
 \item{G}{Greens function matrix (rows = ages, cols = length classes).}
@@ -40,6 +40,6 @@ probability, sample size, negative log-likelihood contribution, and signed
 negative log-likelihood contribution.
 }
 \description{
-Loops through surveys, calculates signed NLL for each, and aggregates the
+Loops through age_at_length, calculates signed NLL for each, and aggregates the
 results.
 }

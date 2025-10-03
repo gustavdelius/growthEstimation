@@ -22,7 +22,7 @@ r & \text{if } l < l_{min} \\
 k(L_\infty^{0} - l) & \text{if } l \geq l_{min}
 \end{cases} $$
 
-where $l_{min}$ is the smallest size observed in any of the surveys, $r$ is a constant growth rate for small sizes, and $k(L_\infty^{0} - l)$ is the von Bertalanffy growth rate for larger sizes.
+where $l_{min}$ is the smallest size observed in any of the age_at_length surveys, $r$ is a constant growth rate for small sizes, and $k(L_\infty^{0} - l)$ is the von Bertalanffy growth rate for larger sizes.
 
 The positive parameters $k, L_\infty^0, d, \mu_0$ and $r$ need to be estimated from data. The superscript $0$ on $L_\infty$ indicates that this is the asymptotic length in the absence of diffusion. The asymptotic length when diffusion is included is $L_\infty = L_\infty^0 + \alpha/k$.
 

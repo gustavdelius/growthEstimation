@@ -38,6 +38,6 @@ to \code{true_pars} with small jitter.}
 A list with \code{simulated_data}, \code{fit}, and \code{comparison} data.frame.
 }
 \description{
-Runs \code{fit_tmb_nll()} on data from \code{simulate_surveys_from_parameters()} and
+Runs \code{fit_tmb_nll()} on data from \code{simulate_age_at_length_from_parameters()} and
 returns a compact comparison table with true vs estimated parameters.
 }

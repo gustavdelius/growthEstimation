@@ -4,12 +4,12 @@
 \alias{getLogLik}
 \title{Get log likelihood of age observations}
 \usage{
-getLogLik(pars, surveys, Delta_l = 1, Delta_t = 0.05)
+getLogLik(pars, age_at_length, Delta_l = 1, Delta_t = 0.05)
 }
 \arguments{
 \item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
-\item{surveys}{A data frame with survey age-at-length observations with
+\item{age_at_length}{A data frame with survey age-at-length observations with
 columns \code{survey_date}, \code{Length}, \code{K}, and \code{count}.}
 
 \item{Delta_l}{Width of size bins (cm). Default is 1.}

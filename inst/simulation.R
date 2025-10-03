@@ -23,7 +23,7 @@ survey_dates <- c(2023.25, 2023.5, 2023.75)
 lengths <- seq(10, 100, by = 1)
 n_per_length = 50
 
-sim_df <- simulate_surveys_from_parameters(
+sim_df <- simulate_age_at_length_from_parameters(
     pars = true_pars,
     survey_dates = survey_dates,
     lengths = lengths,

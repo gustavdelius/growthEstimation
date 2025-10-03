@@ -4,7 +4,7 @@
 #' Spawning parameters, annuli_date, and annuli_min_age are treated as data.
 #'
 #' @param pars List of parameters
-#' @param surveys Data frame with columns survey_date (numeric), Length, K, count.
+#' @param age_at_length Data frame with columns survey_date (numeric), Length, K, count.
 #' @param Delta_l Numeric size step (cm), default 1.
 #' @param Delta_t Numeric time step (years), default 0.05.
 #' @param lower Named numeric vector of lower bounds.
@@ -14,41 +14,41 @@
 #' @export
 fit_tmb_nll <- function(
     pars,
-    surveys,
+    age_at_length,
     Delta_l = 1,
     Delta_t = 0.05,
     lower = c(),
     upper = c()
 ) {
-    stopifnot(all(c("survey_date", "Length", "K", "count") %in% names(surveys)))
-    surveys <- as.data.frame(surveys)
+    stopifnot(all(c("survey_date", "Length", "K", "count") %in% names(age_at_length)))
+    age_at_length <- as.data.frame(age_at_length)
 
     # Ensure vB_min_size present in pars ----
     if (is.null(pars$vB_min_size)) {
-        pars$vB_min_size <- as.numeric(min(surveys$Length))
+        pars$vB_min_size <- as.numeric(min(age_at_length$Length))
     }
 
     # Build grids similarly to getLogLik()
-    l_max <- ceiling(max(surveys$Length) * 1.1)
-    t_max <- max(surveys$K) + 2
+    l_max <- ceiling(max(age_at_length$Length) * 1.1)
+    t_max <- max(age_at_length$K) + 2
     N_l <- ceiling(l_max / Delta_l)
     N_t <- ceiling(t_max / Delta_t)
     l_grid <- (1:N_l - 0.5) * Delta_l
     a_grid <- (0:N_t) * Delta_t
 
     # Map observed Length to nearest grid cell index
-    length_index <- pmax(1L, pmin(N_l, as.integer(floor(surveys$Length / Delta_l + 0.5))))
+    length_index <- pmax(1L, pmin(N_l, as.integer(floor(age_at_length$Length / Delta_l + 0.5))))
 
-    # Unique surveys and indexing
-    survey_levels <- sort(unique(surveys$survey_date))
-    survey_index <- match(surveys$survey_date, survey_levels)
+    # Unique age_at_length and indexing
+    survey_levels <- sort(unique(age_at_length$survey_date))
+    survey_index <- match(age_at_length$survey_date, survey_levels)
 
     # Observations as vectors, aggregated
     obs_df <- data.frame(
         s = survey_index,
         j = length_index,
-        K = as.integer(surveys$K),
-        count = as.numeric(surveys$count)
+        K = as.integer(age_at_length$K),
+        count = as.numeric(age_at_length$count)
     )
     obs_df <- stats::aggregate(count ~ s + j + K, data = obs_df, sum)
     obs_survey_index <- as.integer(obs_df$s)

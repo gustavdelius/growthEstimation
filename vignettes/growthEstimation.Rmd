@@ -34,7 +34,7 @@ tune_pars(pars, age_at_length)
 
 You can automatically tune the parameters with
 ```{r}
-fit <- fit_tmb_nll(pars, surveys = age_at_length)
+fit <- fit_tmb_nll(pars, age_at_length = age_at_length)
 
 pars <- fit$pars
 plotAgeLikelihood(pars, age_at_length)
@@ -68,7 +68,7 @@ plotDensity3D(u)
 
 If we constrain the mortality coefficient to be at least 30 we get:
 ```{r}
-fit <- fit_tmb_nll(pars, surveys = age_at_length,
+fit <- fit_tmb_nll(pars, age_at_length = age_at_length,
                    lower = c(m = 25))
 
 pars <- fit$pars

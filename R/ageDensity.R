@@ -80,9 +80,9 @@ generate_model_predictions_for_date <- function(
 
 #' Calculate and Aggregate Signed Log-Likelihood Contributions
 #'
-#' Loops through surveys, calculates signed NLL for each, and aggregates the
+#' Loops through age_at_length, calculates signed NLL for each, and aggregates the
 #' results.
-#' @param surveys A data frame with survey age-at-length observations with
+#' @param age_at_length A data frame with survey age-at-length observations with
 #'   columns `survey_date`, `Length`, `K`, and `count`.
 #' @inheritParams generate_model_predictions_for_date
 #' @return A data frame containing, for each observed Length-K bin in each
@@ -90,21 +90,21 @@ generate_model_predictions_for_date <- function(
 #'   probability, sample size, negative log-likelihood contribution, and signed
 #'   negative log-likelihood contribution.
 #' @export
-calculate_and_aggregate_likelihood <- function(surveys, G, a, l, mu, kappa,
+calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa,
                                                annuli_date, annuli_min_age) {
     # Declare variables to avoid R CMD check warnings
     Length <- K <- N <- Prob <- Expected <- NegLogLik <- SignedNegLogLik <-
         TotalObserved <- TotalExpected <- TotalNegLogLik <- count <- NULL
 
     # Split the data frame by unique survey date
-    surveys <- split(surveys, surveys$survey_date)
+    age_at_length <- split(age_at_length, age_at_length$survey_date)
 
     log_lik_contributions <- list()
 
-    for (survey_date_str in names(surveys)) {
+    for (survey_date_str in names(age_at_length)) {
         survey_date_current <- as.numeric(survey_date_str)
 
-        current_obs_df <- surveys[[survey_date_str]]
+        current_obs_df <- age_at_length[[survey_date_str]]
 
         # 1. Generate model predictions for this date
         P_model <- generate_model_predictions_for_date(
@@ -137,7 +137,7 @@ calculate_and_aggregate_likelihood <- function(surveys, G, a, l, mu, kappa,
         log_lik_contributions[[survey_date_str]] <- likelihood_df
     }
 
-    # Aggregate contributions across all surveys
+    # Aggregate contributions across all age_at_length surveys
     all_contributions_df <- do.call(rbind, log_lik_contributions)
 
     total_contributions <- all_contributions_df |>
