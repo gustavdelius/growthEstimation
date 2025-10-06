@@ -5,7 +5,7 @@
 \alias{Cod_CS_age_at_length}
 \title{Example age_at_length data for Cod in the Celtic Sea.}
 \format{
-A data frame with 329 rows and 4 columns. The columns ae:
+A data frame with 329 rows and 4 columns. The columns are:
 \describe{
 \item{survey_date}{The within-year date of the survey (decimal year)}
 \item{length}{length (cm)}
