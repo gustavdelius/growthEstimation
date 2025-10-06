@@ -1,13 +1,17 @@
-#' Age-to-Ring Mapping Function Calculate_K(a)
-#' Deterministically maps true age to the expected annuli count, given
-#' a survey date, an annual ring-formation day, and a minimum age threshold.
+#' Age-to-Annuli Mapping Function
+#'
+#' Deterministically maps true age to the expected annuli count, given a survey
+#' date, an annual ring-formation day, and a minimum age threshold.
 #' @param age_in_years A numeric vector of true ages in years.
 #' @param survey_date The survey date as a numeric year (e.g., 2023.25).
 #' @param annuli_date Ring formation day as fraction of a year in \[0, 1).
-#' @param annuli_min_age The minimum age (years) required to form the first ring.
-#' @return An integer vector with the calculated number of rings (K) for each age.
+#' @param annuli_min_age The minimum age (years) required to form the first
+#'   ring.
+#' @return An integer vector with the calculated number of rings (K) for each
+#'   age.
 #' @export
-calculate_K <- function(age_in_years, survey_date, annuli_date, annuli_min_age) {
+age_to_annuli <- function(age_in_years, survey_date,
+                          annuli_date, annuli_min_age) {
     sapply(age_in_years, function(age) {
         if (age < 0) return(0)
         birth_date <- survey_date - age
@@ -28,7 +32,7 @@ calculate_K <- function(age_in_years, survey_date, annuli_date, annuli_min_age) 
     })
 }
 
-#' Generate model predictions for a specific survey date
+#' Generate model predictions for annuli at length at a specific survey date
 #'
 #' Calculates the probability P(K | length) that a fish in a given length class
 #' is observed with K annuli.
@@ -40,25 +44,25 @@ calculate_K <- function(age_in_years, survey_date, annuli_date, annuli_min_age) 
 #' @param kappa Spawning concentration parameter.
 #' @param annuli_date Ring formation day as fraction of a year in \[0, 1).
 #' @param annuli_min_age Minimum age (years) at which the first ring can form.
-#' @return A matrix of probabilities P(K|l) with rows named by `length` and columns
-#'   by `K`.
+#' @return A matrix of probabilities P(K|l) with rows named by `length` and
+#'   columns by `K`.
 #' @export
 #' @examples
 #' # Minimal schematic example (using toy inputs)
 #' a <- seq(0, 3, length.out = 5)
 #' l <- seq(10, 30, length.out = 3)
 #' G <- matrix(abs(sin(outer(a, l, "+"))), nrow = length(a))
-#' generate_model_predictions_for_date(2023.5, G, a, l, mu = 0.5, kappa = 3,
+#' annuli_predictions_for_date(2023.5, G, a, l, mu = 0.5, kappa = 3,
 #'                                     annuli_date = 0.25, annuli_min_age = 0.5)
-generate_model_predictions_for_date <- function(
+annuli_predictions_for_date <- function(
         survey_date, G, a, l, mu, kappa, annuli_date, annuli_min_age) {
     # Population Convolution
     birth_dates <- survey_date - a
-    spawning_weights <- spawning_density(birth_dates, mu, kappa)
+    spawning_weights <- get_spawning_density(birth_dates, mu, kappa)
     N_pop <- diag(spawning_weights) %*% G
 
     # Observation Convolution
-    k_for_each_age <- calculate_K(a, survey_date, annuli_date, annuli_min_age)
+    k_for_each_age <- age_to_annuli(a, survey_date, annuli_date, annuli_min_age)
     max_K <- max(k_for_each_age)
     k_bins <- 0:max_K
     N_model <- matrix(0, nrow = length(l), ncol = length(k_bins))
@@ -80,18 +84,18 @@ generate_model_predictions_for_date <- function(
 
 #' Calculate and Aggregate Signed Log-Likelihood Contributions
 #'
-#' Loops through age_at_length, calculates signed NLL for each, and aggregates the
-#' results.
+#' Loops through age_at_length, calculates signed NLL for each, and aggregates
+#' the results.
 #' @param age_at_length A data frame with survey age-at-length observations with
 #'   columns `survey_date`, `length`, `K`, and `count`.
-#' @inheritParams generate_model_predictions_for_date
+#' @inheritParams annuli_predictions_for_date
 #' @return A data frame containing, for each observed length-K bin in each
 #'   survey, the observed count, expected count under the model, model
 #'   probability, sample size, negative log-likelihood contribution, and signed
 #'   negative log-likelihood contribution.
 #' @export
-calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa,
-                                               annuli_date, annuli_min_age) {
+age_likelihood <- function(age_at_length, G, a, l, mu, kappa,
+                           annuli_date, annuli_min_age) {
     # Declare variables to avoid R CMD check warnings
     length <- K <- N <- Prob <- Expected <- NegLogLik <- SignedNegLogLik <-
         TotalObserved <- TotalExpected <- TotalNegLogLik <- count <- NULL
@@ -107,8 +111,9 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
         current_obs_df <- age_at_length[[survey_date_str]]
 
         # 1. Generate model predictions for this date
-        P_model <- generate_model_predictions_for_date(
-            survey_date_current, G, a, l, mu, kappa, annuli_date, annuli_min_age
+        P_model <- annuli_predictions_for_date(
+            survey_date_current, G, a, l, mu, kappa,
+            annuli_date, annuli_min_age
         )
 
         # 2. Get sample sizes per length for this survey
@@ -130,7 +135,7 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
         likelihood_df <- likelihood_df |>
             mutate(
                 Expected = N * Prob,
-                NegLogLik = - (count * log(Prob + epsilon)),
+                NegLogLik = -(count * log(Prob + epsilon)),
                 SignedNegLogLik = sign(count - Expected) * NegLogLik
             )
 
@@ -151,7 +156,8 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
         mutate(
             # The final signed NLL is the total misfit, with the sign determined
             # by the overall difference between observed and expected counts.
-            SignedNegLogLik = sign(TotalObserved - TotalExpected) * TotalNegLogLik
+            SignedNegLogLik = sign(TotalObserved - TotalExpected) *
+                TotalNegLogLik
         )
 
     return(total_contributions)
@@ -162,16 +168,18 @@ calculate_and_aggregate_likelihood <- function(age_at_length, G, a, l, mu, kappa
 #' Draws K values using multinomial sampling with probabilities P(K | length)
 #' for each length observed in a given survey.
 #' @param P_model_K_given_l Matrix of predicted probabilities P(K | length).
-#' @param survey_obs A data frame for one survey with at least a `length` column.
-#' @return An integer vector of simulated K values aligned with `survey_obs` rows.
+#' @param survey_obs A data frame for one survey with at least a `length`
+#'   column.
+#' @return An integer vector of simulated K values aligned with `survey_obs`
+#'   rows.
 #' @export
 #' @examples
 #' set.seed(1)
 #' P <- matrix(c(0.7, 0.3, 0.2, 0.8), nrow = 2, byrow = TRUE)
 #' rownames(P) <- c("20", "30"); colnames(P) <- c("0", "1")
 #' survey_obs <- data.frame(length = c(20, 20, 30, 30, 30))
-#' simulate_sample_from_model(P, survey_obs)
-simulate_sample_from_model <- function(P_model_K_given_l, survey_obs) {
+#' simulate_age_sample_from_model(P, survey_obs)
+simulate_age_sample_from_model <- function(P_model_K_given_l, survey_obs) {
     simulated_K <- integer(nrow(survey_obs))
 
     # Get the unique length classes that were actually sampled in this survey
@@ -206,33 +214,4 @@ simulate_sample_from_model <- function(P_model_K_given_l, survey_obs) {
         }
     }
     return(simulated_K)
-}
-
-
-#' Build a length rebinning matrix
-#'
-#' Computes the fraction of each model length bin that overlaps each survey
-#' length bin, producing a matrix suitable for rebinning/aggregation.
-#' @param l_model Numeric vector of model bin edges (strictly increasing).
-#' @param l_survey Numeric vector of survey bin edges (strictly increasing).
-#' @return A matrix of dimension `(length(l_model) - 1) x (length(l_survey) - 1)`
-#'   where each entry is the fraction of the model bin width overlapping a
-#'   survey bin.
-#' @keywords internal
-length_rebinning_matrix <- function(l_model, l_survey) {
-    # model length bins are defined by l_model
-    low_L  <- l_model[-length(l_model)]
-    high_L <- l_model[-1]
-    # survey length bins are defined by l_survey
-    low_S  <- l_survey[-length(l_survey)]
-    high_S <- l_survey[-1]
-
-    B <- matrix(0, nrow = length(high_L), ncol = length(high_S))
-    for (l in seq_along(high_L)) {
-        for (j in seq_along(high_S)) {
-            overlap <- max(0, min(high_L[l], high_S[j]) - max(low_L[l], low_S[j]))
-            B[l, j] <- overlap / (high_L[l] - low_L[l])   # fraction of model bin
-        }
-    }
-    return(B)
 }

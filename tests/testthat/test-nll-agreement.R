@@ -1,4 +1,4 @@
-test_that("TMB nll matches NLL computed from getLogLik()", {
+test_that("TMB nll matches NLL computed from get_age_log_likelihood()", {
     age_at_length <- Cod_CS_age_at_length
 
     # Common discretisation to keep both paths consistent
@@ -18,8 +18,8 @@ test_that("TMB nll matches NLL computed from getLogLik()", {
         annuli_min_age = 0.5
     )
 
-    # 1) NLL via getLogLik(): sum of NegLogLik contributions
-    ll_df <- getLogLik(pars, age_at_length, Delta_l = Delta_l, Delta_t = Delta_t)
+    # 1) NLL via get_age_log_likelihood(): sum of NegLogLik contributions
+    ll_df <- get_age_log_likelihood(pars, age_at_length, Delta_l = Delta_l, Delta_t = Delta_t)
     nll_r <- sum(ll_df$TotalNegLogLik, na.rm = TRUE)
 
     # 2) NLL via TMB objective function in nll.cpp using identical grids and data

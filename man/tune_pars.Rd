@@ -12,7 +12,7 @@ tune_pars(pars, age_at_length)
 and \code{annuli_min_age}.}
 
 \item{age_at_length}{A data frame of observed age-at-length data as used by
-\code{plotAgeLikelihood()} (see \code{Cod_CS_age_at_length}).}
+\code{plot_age_likelihood()} (see \code{Cod_CS_age_at_length}).}
 }
 \value{
 Invisibly returns the final parameters after the gadget is closed.
@@ -21,7 +21,7 @@ While the gadget is running it displays the plot interactively.
 \description{
 Launches a small Shiny gadget with sliders in the left sidebar for each
 numeric element of \code{pars} and a live-updating plot of
-\code{plotAgeLikelihood(pars, age_at_length)} in the main panel.
+\code{plot_age_likelihood(pars, age_at_length)} in the main panel.
 }
 \examples{
 # Not run: requires interactive session

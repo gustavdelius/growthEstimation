@@ -24,7 +24,7 @@ pars <- list(
 
 age_at_length <- Cod_CS_age_at_length
 
-plotAgeLikelihood(pars, age_at_length)
+plot_age_likelihood(pars, age_at_length)
 ```
 
 To start tuning parameters, run the following code. A Shiny app will open
@@ -37,7 +37,7 @@ You can automatically tune the parameters with
 fit <- fit_tmb_nll(pars, age_at_length = age_at_length)
 
 pars <- fit$pars
-plotAgeLikelihood(pars, age_at_length)
+plot_age_likelihood(pars, age_at_length)
 ```
 
 The parameters appear to fit the age-at-size data, but the mortality and diffusion
@@ -58,12 +58,12 @@ pars$vB_min_size / pars$r + log(1 - pars$vB_min_size / pars$L_inf) / (pars$k * p
 This leads to the following time evolution of a yearly
 cohort:
 ```{r}
-u <- getNumberDensity(pars, l_max = 200, t_max = 15)
-plotDensity2D(u)
+u <- get_number_density(pars, l_max = 200, t_max = 15)
+plot_density_2d(u)
 ```
 
 ```{r}
-plotDensity3D(u)
+plot_density_3d(u)
 ```
 
 If we constrain the mortality coefficient to be at least 30 we get:
@@ -72,24 +72,24 @@ fit <- fit_tmb_nll(pars, age_at_length = age_at_length,
                    lower = c(m = 25))
 
 pars <- fit$pars
-plotAgeLikelihood(pars, age_at_length)
+plot_age_likelihood(pars, age_at_length)
 ```
 
 
 
 This leads to a more realistic time evolution of a yearly cohort:
 ```{r}
-u <- getNumberDensity(pars, l_max = 200, t_max = 15)
-plotDensity2D(u)
+u <- get_number_density(pars, l_max = 200, t_max = 15)
+plot_density_2d(u)
 ```
 ```{r}
-plotDensity3D(u, l_min = 20)
+plot_density_3d(u, l_min = 20)
 ```
 
 The solution including all yearly cohorts looks as follows:
 ```{r}
-u_periodic <- getPeriodicNumberDensity(pars, l_max = 200, t_max = 3)
-plotDensity3D(u_periodic, l_min = 20)
+u_periodic <- get_periodic_number_density(pars, l_max = 200, t_max = 3)
+plot_density_3d(u_periodic, l_min = 20)
 ```
 
 ```{r}

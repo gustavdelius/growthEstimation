@@ -1,7 +1,7 @@
 #' von Mises Probability Density Function
 #'
 #' A lightweight implementation used to model circular seasonality
-#' (e.g., spawning day within a year) without adding dependencies.
+#' (e.g., spawning day within a year).
 #' @param x Angle in radians.
 #' @param mu Mean direction in radians.
 #' @param kappa Concentration parameter (higher means more concentrated).
@@ -16,9 +16,9 @@ von_mises_pdf <- function(x, mu, kappa) {
     return(numerator / denominator)
 }
 
-#' Spawning Density Function S(d)
+#' Spawning Density Function
 #'
-#' Calculates relative spawning intensity for numeric dates using a
+#' Calculates relative spawning intensity S(d) for numeric dates using a
 #' von Mises density on the unit circle of the year.
 #' @param numeric_dates A vector of numeric dates (e.g., 2023.45). Only the
 #'   fractional part is used to determine day-of-year.
@@ -30,9 +30,9 @@ von_mises_pdf <- function(x, mu, kappa) {
 #' @export
 #' @examples
 #' # Peak at mid-year with moderate spread
-#' spawning_density(numeric_dates = c(2020.45, 2020.50, 2020.55),
+#' get_spawning_density(numeric_dates = c(2020.45, 2020.50, 2020.55),
 #'                  mu = 0.5, kappa = 4)
-spawning_density <- function(numeric_dates, mu, kappa) {
+get_spawning_density <- function(numeric_dates, mu, kappa) {
     day_fraction <- numeric_dates %% 1
     day_rad <- day_fraction * 2 * pi
     mu_rad <- mu * 2 * pi
@@ -42,19 +42,21 @@ spawning_density <- function(numeric_dates, mu, kappa) {
 
 #' Get number density as a function of length and time
 #'
-#' Convolves the Green's function obtained with `getGreens()` with the
-#' spawning density from `spawning_density()` to produce the number density
+#' Convolves the Green's function obtained with `get_greens_function()` with the
+#' spawning density from `get_spawning_density()` to produce the number density
 #' as a function of length and time.
-#' @inheritParams getGreens
-#' @param single_cohort Logical; if TRUE (default) include only individuals
-#'   born within the first year.
-#' @return A matrix holding the number density u(t,l). Rows correspond to time and columns to length.
+#' @inheritParams get_greens_function
+#' @param single_cohort Logical. If TRUE (default) include only individuals born
+#'   within the first year. If FALSE, includes all individuals born between time
+#'   0 and time `t_max`.
+#' @return A matrix holding the number density u(t,l). Rows correspond to time
+#'   and columns to length.
 #' @export
-getNumberDensity <- function(pars, l_max, Delta_l = 1,
-                             t_max = 10, Delta_t = 0.05,
-                             single_cohort = TRUE) {
-    G <- getGreens(pars, l_max = l_max, Delta_l = Delta_l,
-                   t_max = t_max, Delta_t = Delta_t)
+get_number_density <- function(pars, l_max, Delta_l = 1,
+                               t_max = 10, Delta_t = 0.05,
+                               single_cohort = TRUE) {
+    G <- get_greens_function(pars, l_max = l_max, Delta_l = Delta_l,
+                             t_max = t_max, Delta_t = Delta_t)
     # G has rows = time (age) 0..N_t and cols = size classes
 
     # Build age/time grid
@@ -87,7 +89,7 @@ getNumberDensity <- function(pars, l_max, Delta_l = 1,
         }
         # birth dates as numeric years (fractional part encodes day-of-year)
         birth_dates <- a_grid[n + 1L] - a_grid[idx + 1L]
-        w <- spawning_density(birth_dates, mu = mu, kappa = kappa)
+        w <- get_spawning_density(birth_dates, mu = mu, kappa = kappa)
         # Weighted sum over ages (rows) to get u(t_n, l)
         # Using crossprod to get 1 x N_l row
         u[n + 1L, ] <- as.numeric(crossprod(w, G[idx + 1L, , drop = FALSE])) * Delta_t
@@ -102,11 +104,11 @@ getNumberDensity <- function(pars, l_max, Delta_l = 1,
 #' have been happening for all negative years in the past, resulting in a
 #' perfectly periodic density with a period of 1 year.
 #'
-#' This function extends the convolution approach used in `getNumberDensity()` to
-#' include contributions from all past years by exploiting the periodicity of
+#' This function extends the convolution approach used in `get_number_density()`
+#' to include contributions from all past years by exploiting the periodicity of
 #' the spawning density function.
 #'
-#' @inheritParams getNumberDensity
+#' @inheritParams get_number_density
 #' @return A matrix holding the periodic number density u(t,l). Rows correspond
 #'   to time and columns to length. The density is periodic with period 1 year.
 #' @export
@@ -114,15 +116,16 @@ getNumberDensity <- function(pars, l_max, Delta_l = 1,
 #' # Get periodic density for a simple parameter set
 #' pars <- list(k = 0.2, L_inf = 100, d = 0.1, m = 0.1,
 #'              spawning_mu = 0.5, spawning_kappa = 4)
-#' u_periodic <- getPeriodicNumberDensity(pars, l_max = 50, t_max = 2)
-getPeriodicNumberDensity <- function(pars, l_max, Delta_l = 1,
-                                   t_max = 1, Delta_t = 0.05) {
+#' u_periodic <- get_periodic_number_density(pars, l_max = 50, t_max = 2)
+get_periodic_number_density <- function(pars, l_max, Delta_l = 1,
+                                        t_max = 1, Delta_t = 0.05) {
     # For periodic solution, we need a Green's function that covers enough time
-    # so that the oldest cohorts have essentially died out
-    # Use a larger t_max for Green's function to ensure we capture all contributions
-    greens_t_max <- max(t_max * 3, 20)  # At least 3x the simulation time, minimum 20 years
+    # so that the oldest cohorts have essentially died out.
+    # Use a larger t_max for Green's function to ensure we capture all
+    # contributions. At least 3x the simulation time, minimum 20 years.
+    greens_t_max <- max(t_max * 3, 20)
 
-    G <- getGreens(pars, l_max = l_max, Delta_l = Delta_l,
+    G <- get_greens_function(pars, l_max = l_max, Delta_l = Delta_l,
                    t_max = greens_t_max, Delta_t = Delta_t)
     # G has rows = time (age) 0..N_t_greens and cols = size classes
 
@@ -130,12 +133,13 @@ getPeriodicNumberDensity <- function(pars, l_max, Delta_l = 1,
     attempt <- 1
     while (!all(G[nrow(G), ] < 1e-4)) {
         if (attempt >= max_attempts) {
-            stop("Cohorts live for too long (density at max age > 1e-4 after ", greens_t_max, 
-                 " years). Please increase the mortality rate (pars$m) or check your parameters.")
+            stop("Cohorts live for too long (density at max age > 1e-4 after ",
+                 greens_t_max,
+                 " years). Please increase the mortality rate (pars$m).")
         }
         greens_t_max <- greens_t_max * 2
         message("I am running the cohorts for ", greens_t_max, " years.")
-        G <- getGreens(pars,
+        G <- get_greens_function(pars,
             l_max = l_max, Delta_l = Delta_l,
             t_max = greens_t_max, Delta_t = Delta_t
         )
@@ -157,17 +161,19 @@ getPeriodicNumberDensity <- function(pars, l_max, Delta_l = 1,
     mu <- pars$spawning_mu
     kappa <- pars$spawning_kappa
 
-    # For periodic solution, we need to consider contributions from all past years
-    # The key insight is that spawning_density(t) = spawning_density(t + 1) for any t
-    # So we can sum over all integer years in the past
+    # For periodic solution, we need to consider contributions from all past
+    # years The key insight is that
+    # get_spawning_density(t) = get_spawning_density(t + 1) for any t.
+    # So we can sum over all integer years in the past.
 
     # For each time t_n, we need to sum over all ages a, including those
-    # that would correspond to births in negative years
+    # that would correspond to births in negative years.
     for (n in 0:N_t_output) {
         t_n <- t_grid[n + 1L]
 
         # For each possible age a (including ages > t_n for periodic solution)
-        # We need to consider all ages up to the maximum age in the Green's function
+        # We need to consider all ages up to the maximum age in the Green's
+        # function
         for (a_idx in 0:N_t_greens) {
             a <- a_grid[a_idx + 1L]
 
@@ -179,12 +185,14 @@ getPeriodicNumberDensity <- function(pars, l_max, Delta_l = 1,
             # S(birth_date) = S(birth_date + k) for any integer k
 
             # We can calculate the contribution from this age cohort
-            # by evaluating the spawning density at the fractional part of birth_date
+            # by evaluating the spawning density at the fractional part of
+            # birth_date
             birth_date_fractional <- birth_date %% 1
-            spawning_intensity <- spawning_density(birth_date_fractional, mu = mu, kappa = kappa)
+            spawning_intensity <- get_spawning_density(birth_date_fractional, mu = mu, kappa = kappa)
 
             # Add contribution from this age cohort
-            u[n + 1L, ] <- u[n + 1L, ] + spawning_intensity * G[a_idx + 1L, ] * Delta_t
+            u[n + 1L, ] <- u[n + 1L, ] +
+                spawning_intensity * G[a_idx + 1L, ] * Delta_t
         }
     }
 

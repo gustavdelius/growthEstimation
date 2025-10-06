@@ -153,7 +153,7 @@ solve_pde <- function(pars, u_initial,
 #' @return A matrix holding the Green's function G(t,l). Rows correspond to
 #'   time and columns to length.
 #' @export
-getGreens <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05) {
+get_greens_function <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05) {
 
     # Set initial condition ----
     N_l <- ceiling(l_max / Delta_l)  # Number of size cells

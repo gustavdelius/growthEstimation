@@ -11,8 +11,9 @@
 #'   size, negative log-likelihood contribution, and signed negative
 #'   log-likelihood contribution.
 #' @export
-getLogLik <- function(pars, age_at_length, Delta_l = 1, Delta_t = 0.05) {
-    # Set up grids ----
+get_age_log_likelihood <- function(pars, age_at_length, Delta_l = 1, Delta_t = 0.05) {
+
+    # Set up grids
     l_max <- ceiling(max(age_at_length$length) * 1.1) # A bit larger than maximum observed size
     t_max <- max(age_at_length$K) + 2 # TODO: set t_max only as high as needed
     N_l <- ceiling(l_max / Delta_l) # Number of time steps
@@ -24,10 +25,10 @@ getLogLik <- function(pars, age_at_length, Delta_l = 1, Delta_t = 0.05) {
     if (is.null(pars$vB_min_size)) {
         pars$vB_min_size <- as.numeric(min(age_at_length$length))
     }
-    G <- getGreens(pars, l_max = l_max, Delta_l = Delta_l,
+    G <- get_greens_function(pars, l_max = l_max, Delta_l = Delta_l,
                    t_max = t_max, Delta_t = Delta_t)
 
-    calculate_and_aggregate_likelihood(
+    age_likelihood(
         age_at_length, G = G, a = a_grid, l = l_grid,
         mu = pars$spawning_mu, kappa = pars$spawning_kappa,
         annuli_date = pars$annuli_date, annuli_min_age = pars$annuli_min_age)
@@ -76,7 +77,7 @@ simulate_age_at_length_from_parameters <- function(
     a_grid <- (0:ceiling(t_max / Delta_t)) * Delta_t
 
     # Greens function once (independent of survey)
-    G <- getGreens(pars, l_max = l_max, Delta_l = Delta_l,
+    G <- get_greens_function(pars, l_max = l_max, Delta_l = Delta_l,
                    t_max = t_max, Delta_t = Delta_t)
 
     # Map desired observation lengths to nearest model grid rows for P(K|l)
@@ -96,7 +97,7 @@ simulate_age_at_length_from_parameters <- function(
     res_i <- 1L
     for (sd in survey_dates) {
         # Get P(K|l) for this survey date
-        P_model <- generate_model_predictions_for_date(
+        P_model <- annuli_predictions_for_date(
             survey_date = sd,
             G = G,
             a = a_grid,

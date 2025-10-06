@@ -28,7 +28,7 @@ fit_tmb_nll <- function(
         pars$vB_min_size <- as.numeric(min(age_at_length$length))
     }
 
-    # Build grids similarly to getLogLik()
+    # Build grids similarly to get_age_log_likelihood()
     l_max <- ceiling(max(age_at_length$length) * 1.1)
     t_max <- max(age_at_length$K) + 2
     N_l <- ceiling(l_max / Delta_l)

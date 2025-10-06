@@ -2,13 +2,13 @@
 #'
 #' Launches a small Shiny gadget with sliders in the left sidebar for each
 #' numeric element of `pars` and a live-updating plot of
-#' `plotAgeLikelihood(pars, age_at_length)` in the main panel.
+#' `plot_age_likelihood(pars, age_at_length)` in the main panel.
 #'
 #' @param pars A named list of scalar numeric parameters. Typical entries are
 #'   `k`, `L_inf`, `d`, `m`, `spawning_mu`, `spawning_kappa`, `annuli_date`,
 #'   and `annuli_min_age`.
 #' @param age_at_length A data frame of observed age-at-length data as used by
-#'   `plotAgeLikelihood()` (see `Cod_CS_age_at_length`).
+#'   `plot_age_likelihood()` (see `Cod_CS_age_at_length`).
 #'
 #' @return Invisibly returns the final parameters after the gadget is closed.
 #'   While the gadget is running it displays the plot interactively.
@@ -94,7 +94,7 @@ tune_pars <- function(pars, age_at_length) {
 		}
 
 		output$lik_plot <- shiny::renderPlot({
-		    plotAgeLikelihood(current_pars(), age_at_length) +
+		    plot_age_likelihood(current_pars(), age_at_length) +
             theme_minimal(base_size = 16)
 		})
 

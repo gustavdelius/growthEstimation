@@ -14,9 +14,9 @@ start_pars <- list(
     vB_min_size = 0
 )
 
-u <- getNumberDensity(true_pars, l_max = 100)
-plotDensity2D(u)
-plotDensity3D(u, l_min = 10)
+u <- get_number_density(true_pars, l_max = 100)
+plot_density_2d(u)
+plot_density_3d(u, l_min = 10)
 
 set.seed(123)
 survey_dates <- c(2023.25, 2023.5, 2023.75)
@@ -29,7 +29,7 @@ sim_df <- simulate_age_at_length_from_parameters(
     lengths = lengths,
     n_per_length = n_per_length
 )
-plotAgeLikelihood(true_pars, sim_df)
+plot_age_likelihood(true_pars, sim_df)
 
 set.seed(123)
 res <- fit_on_simulated_data(
@@ -41,8 +41,8 @@ res <- fit_on_simulated_data(
 )
 res$comparison
 
-u <- getNumberDensity(res$fit$pars, l_max = 100)
-plotDensity2D(u)
-plotDensity3D(u, l_min = 10)
+u <- get_number_density(res$fit$pars, l_max = 100)
+plot_density_2d(u)
+plot_density_3d(u, l_min = 10)
 
-plotAgeLikelihood(res$fit$pars, sim_df)
+plot_age_likelihood(res$fit$pars, sim_df)

@@ -7,7 +7,7 @@ test_that("periodic density is approximately 1-year periodic", {
     Delta_t <- 0.1
     t_max <- 20
 
-    u_periodic <- getPeriodicNumberDensity(pars, l_max = l_max,
+    u_periodic <- get_periodic_number_density(pars, l_max = l_max,
                                            Delta_l = Delta_l,
                                            t_max = t_max,
                                            Delta_t = Delta_t)

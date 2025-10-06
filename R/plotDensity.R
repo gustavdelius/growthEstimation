@@ -16,9 +16,9 @@ utils::globalVariables(c("size", "u", "year"))
 #' \dontrun{
 #' pars <- list(k = 0.5, L_inf = 100, d = 1, m = 0.2)
 #' u <- getDensity(pars, l_max = 100, Delta_l = 1, t_max = 10, Delta_t = 0.1)
-#' plotDensity3D(u, Delta_l = 1, Delta_t = 0.1)
+#' plot_density_3d(u, Delta_l = 1, Delta_t = 0.1)
 #' }
-plotDensity3D <- function(u, Delta_l = 1, Delta_t = 0.05, l_min = 5, ...) {
+plot_density_3d <- function(u, Delta_l = 1, Delta_t = 0.05, l_min = 5, ...) {
     if (!is.matrix(u)) stop("u must be a numeric matrix.")
 
     n_time <- nrow(u)
@@ -69,9 +69,9 @@ plotDensity3D <- function(u, Delta_l = 1, Delta_t = 0.05, l_min = 5, ...) {
 #' \dontrun{
 #' pars <- list(k = 0.5, L_inf = 100, d = 0.01, m = 0.01)
 #' u <- getDensity(pars, l_max = 100, Delta_l = 1, t_max = 10, Delta_t = 0.1)
-#' plotDensity2D(u, Delta_l = 1, Delta_t = 0.1)
+#' plot_density_2d(u, Delta_l = 1, Delta_t = 0.1)
 #' }
-plotDensity2D <- function(u, Delta_l = 1, Delta_t = 0.05, l_offset = 0, years = NULL) {
+plot_density_2d <- function(u, Delta_l = 1, Delta_t = 0.05, l_offset = 0, years = NULL) {
     if (!is.matrix(u)) stop("u must be a numeric matrix as returned by getDensity().")
 
     n_time <- nrow(u)

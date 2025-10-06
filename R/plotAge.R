@@ -1,13 +1,17 @@
-#' Plot signed log-likelihood contributions with mean K lines
+#' Plot signed log-likelihood contributions from age_at_length with mean K lines
 #'
 #' Creates a heatmap of the signed contribution of each cell to the NLL,
 #' and overlays the mean observed and expected K values.
-#' @param contributions_df A data frame from calculate_and_aggregate_likelihood.
-#' @return A ggplot object.
-plot_log_likelihood <- function(contributions_df) {
+#' @param pars A list of parameters.
+#' @param age_at_length Data frame of age-at-length observations.
+#' @return A `ggplot2` object.
+#' @export
+plot_age_likelihood <- function(pars, age_at_length) {
     # Declare variables to avoid R CMD check warnings
     length <- K <- TotalObserved <- TotalExpected <- SignedNegLogLik <- MeanK <- Source <- NULL
 
+    # Simulate age data
+    contributions_df <- get_age_log_likelihood(pars, age_at_length)
     # Convert factors to numeric for plotting
     contributions_df$length <- as.numeric(as.character(contributions_df$length))
     contributions_df$K <- as.numeric(as.character(contributions_df$K))
@@ -33,7 +37,7 @@ plot_log_likelihood <- function(contributions_df) {
 
     # Calculate total negative log likelihood
     total_nll <- sum(contributions_df$TotalNegLogLik, na.rm = TRUE)
-    
+
     # Create the plot
     p <- ggplot(contributions_df, aes(x = length, y = K)) +
         # Heatmap layer for the misfit
@@ -70,23 +74,4 @@ plot_log_likelihood <- function(contributions_df) {
         theme_minimal()
 
     return(p)
-}
-
-#' Plot the likelihood of the observed age at length data
-#'
-#' @param pars A list of parameters
-#' @param age_at_length Data frame of raw age-at-length observations; will be
-#'   preprocessed internally by `preprocess_length_at_age()`.
-#' @return A `ggplot2` object suitable for display in Shiny or saving.
-#' @export
-#' @examples
-#' # In practice provide a real `age_at_length` table for the species
-#' # p <- plotAge(pars, age_at_length = df)
-plotAgeLikelihood <- function(pars, age_at_length) {
-
-    # Simulate age data
-    logLik <- getLogLik(pars, age_at_length)
-
-    # Calculate and plot residuals
-    plot_log_likelihood(logLik)
 }
