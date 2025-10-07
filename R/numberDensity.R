@@ -198,3 +198,83 @@ get_periodic_number_density <- function(pars, l_max, Delta_l = 1,
 
     return(u)
 }
+
+#' Get log likelihood of length frequency observations
+#'
+#' Calculates the multinomial log likelihood of observed length frequencies
+#' given the steady state density predicted by the model, accounting for
+#' size selectivity.
+#'
+#' @param pars A list containing the model parameters to pass to
+#'   `solve_pde_steady_state()`: k, L_inf, d, m, r (and optionally vB_min_size),
+#'   as well as selectivity parameters l50 and l25.
+#' @param length_freq A data frame with columns `length` and `count`, containing
+#'   observed length frequencies.
+#' @param Delta_l Width of size bins (cm). Default is 1.
+#' @param l_max The maximum length to consider. If NULL (default), it is set to
+#'   110% of the maximum observed length.
+#'
+#' @return A scalar value representing the log likelihood (negative of the
+#'   multinomial negative log likelihood).
+#' @export
+#' @examples
+#' # Example using the Cod Celtic Sea data
+#' data(Cod_CS_pars)
+#' data(Cod_CS_length_freq)
+#' # Add selectivity parameters
+#' pars <- Cod_CS_pars
+#' pars$l50 <- 40
+#' pars$l25 <- 30
+#' get_length_log_likelihood(pars, Cod_CS_length_freq)
+get_length_log_likelihood <- function(pars, length_freq, Delta_l = 1, l_max = NULL) {
+    
+    # Determine l_max if not provided
+    if (is.null(l_max)) {
+        l_max <- ceiling(max(length_freq$length) * 1.1)
+    }
+    
+    # Get steady state density
+    u_steady <- solve_pde_steady_state(pars, Delta_l = Delta_l, l_max = l_max)
+    
+    # Create length grid (cell centers)
+    N_l <- length(u_steady)
+    l_grid <- (1:N_l - 0.5) * Delta_l
+    
+    # Apply size selectivity if parameters are provided
+    if (!is.null(pars$l50) && !is.null(pars$l25)) {
+        # Calculate slope from l25 and l50
+        # At l50: selectivity = 0.5, at l25: selectivity = 0.25
+        # Using logistic function: S(l) = 1 / (1 + exp(-slope * (l - l50)))
+        # Solving: slope = log(3) / (l50 - l25)
+        slope <- log(3) / (pars$l50 - pars$l25)
+        
+        # Calculate selectivity for each length in the grid
+        selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
+        
+        # Multiply density by selectivity
+        u_steady <- u_steady * selectivity
+    }
+    
+    # Normalize density to get probabilities
+    total_density <- sum(u_steady)
+    if (total_density > 0) {
+        prob_model <- u_steady / total_density
+    } else {
+        # If density is zero everywhere, use uniform distribution
+        prob_model <- rep(1 / N_l, N_l)
+    }
+    
+    # Match observed lengths to grid
+    # For each observed length, find the corresponding grid cell
+    length_indices <- pmax(1, pmin(N_l, ceiling(length_freq$length / Delta_l)))
+    
+    # Get probabilities for observed lengths
+    prob_obs <- prob_model[length_indices]
+    
+    # Calculate multinomial log likelihood
+    # Add small epsilon to avoid log(0)
+    epsilon <- 1e-9
+    log_lik <- sum(length_freq$count * log(prob_obs + epsilon))
+    
+    return(log_lik)
+}
