@@ -35,11 +35,15 @@ int calculate_K_for_age(Type age, Type survey_date, Type annuli_date, Type annul
 
 template<class Type>
 Type objective_function<Type>::operator() () {
-  // Observation data
+  // Age observation data
   DATA_IVECTOR(obs_survey_index);
   DATA_IVECTOR(obs_length_index);
   DATA_IVECTOR(obs_K);
   DATA_VECTOR(obs_count);
+
+  // Length frequency observation data
+  DATA_IVECTOR(length_freq_index);
+  DATA_VECTOR(length_freq_count);
 
   // Survey meta
   DATA_VECTOR(survey_dates);
@@ -60,12 +64,18 @@ Type objective_function<Type>::operator() () {
   DATA_SCALAR(log_eps);
   DATA_SCALAR(vB_min_size);
 
+  // Likelihood weights
+  DATA_SCALAR(weight_age);
+  DATA_SCALAR(weight_length);
+
   // Parameters
   PARAMETER(k);
   PARAMETER(L_inf);
   PARAMETER(d);
   PARAMETER(m);
   PARAMETER(r);
+  PARAMETER(l50);
+  PARAMETER(ratio);  // ratio = l25/l50
 
   int N_l = l_grid.size();
   int N_t = a_grid.size() - 1;
@@ -179,8 +189,8 @@ Type objective_function<Type>::operator() () {
     }
   }
 
-  // NLL accumulation over observed cells only
-  Type nll = Type(0);
+  // NLL accumulation for age data over observed cells only
+  Type nll_age = Type(0);
   for (int idx = 0; idx < nObs; ++idx) {
     int s = obs_survey_index(idx) - 1;
     int j = obs_length_index(idx) - 1;
@@ -190,14 +200,97 @@ Type objective_function<Type>::operator() () {
     Type den = denom_sum(s, j);
     Type p = num / den;
     Type logp = CppAD::log(p + CppAD::exp(log_eps));
-    nll -= obs_count(idx) * logp;
+    nll_age -= obs_count(idx) * logp;
   }
+
+  // Steady state solution for length likelihood
+  // Using the same tridiagonal coefficients but for steady state (no time derivative)
+  vector<Type> a_ss(N_l - 1), b_ss(N_l), c_ss(N_l - 1);
+  Type c1_ss = Type(1.0) / Delta_l;
+  Type c2_ss = Type(1.0) / (Delta_l * Delta_l);
+  
+  for (int i = 1; i <= N_l - 2; ++i) {
+    a_ss(i - 1) = -c1_ss * v_plus(i) - c2_ss * D(i);
+    c_ss(i)     =  c1_ss * v_minus(i + 1) - c2_ss * D(i + 1);
+    b_ss(i)     =  mu_vec(i) + c1_ss * (v_plus(i + 1) - v_minus(i))
+                 + c2_ss * (D(i + 1) + D(i));
+  }
+  b_ss(0) = mu_vec(0) + c1_ss * (v_plus(1) + D(1) / Delta_l);
+  c_ss(0) = c1_ss * (v_minus(1) - D(1) / Delta_l);
+  a_ss(N_l - 2) = -c1_ss * v_plus(N_l - 1) - c2_ss * D(N_l - 1);
+  b_ss(N_l - 1) = mu_vec(N_l - 1) + c1_ss * (v_plus(N_l) - v_minus(N_l - 1))
+                + c2_ss * (D(N_l) + D(N_l - 1));
+
+  // Solve steady state: fix u[0] = 1, solve for rest
+  vector<Type> u_steady(N_l);
+  u_steady(0) = Type(1.0);
+  
+  if (N_l > 1) {
+    vector<Type> d_rhs_ss(N_l - 1);
+    d_rhs_ss(0) = -a_ss(0);  // -A[1,0] * u[0]
+    for (int i = 1; i < N_l - 1; ++i) d_rhs_ss(i) = Type(0);
+    
+    if (N_l > 2) {
+      vector<Type> a_mod(N_l - 2), b_mod(N_l - 1), c_mod(N_l - 2);
+      for (int i = 0; i < N_l - 2; ++i) a_mod(i) = a_ss(i + 1);
+      for (int i = 0; i < N_l - 1; ++i) b_mod(i) = b_ss(i + 1);
+      for (int i = 0; i < N_l - 2; ++i) c_mod(i) = c_ss(i);
+      
+      vector<Type> u_interior = solve_tridiag(a_mod, b_mod, c_mod, d_rhs_ss);
+      for (int i = 1; i < N_l; ++i) u_steady(i) = u_interior(i - 1);
+    } else {
+      u_steady(1) = d_rhs_ss(0) / b_ss(1);
+    }
+  }
+  
+  // Normalize steady state
+  Type max_u = u_steady(0);
+  for (int i = 1; i < N_l; ++i) {
+    if (CppAD::abs(u_steady(i)) > CppAD::abs(max_u)) max_u = u_steady(i);
+  }
+  for (int i = 0; i < N_l; ++i) u_steady(i) /= max_u;
+
+  // Apply selectivity if l50 and ratio are provided
+  Type l25 = ratio * l50;
+  Type slope = CppAD::log(Type(3.0)) / (l50 - l25);
+  vector<Type> selectivity(N_l);
+  for (int i = 0; i < N_l; ++i) {
+    selectivity(i) = Type(1.0) / (Type(1.0) + CppAD::exp(-slope * (l_grid(i) - l50)));
+  }
+  
+  // Multiply density by selectivity
+  vector<Type> u_selected(N_l);
+  for (int i = 0; i < N_l; ++i) u_selected(i) = u_steady(i) * selectivity(i);
+  
+  // Normalize to get probabilities
+  Type total_density = Type(0);
+  for (int i = 0; i < N_l; ++i) total_density += u_selected(i);
+  
+  vector<Type> prob_length(N_l);
+  for (int i = 0; i < N_l; ++i) {
+    prob_length(i) = u_selected(i) / total_density;
+  }
+  
+  // Calculate length frequency NLL
+  Type nll_length = Type(0);
+  int nLengthObs = length_freq_count.size();
+  for (int idx = 0; idx < nLengthObs; ++idx) {
+    int j = length_freq_index(idx) - 1;  // Convert to 0-based
+    Type p = prob_length(j);
+    Type logp = CppAD::log(p + CppAD::exp(log_eps));
+    nll_length -= length_freq_count(idx) * logp;
+  }
+  
+  // Combined weighted NLL
+  Type nll = weight_age * nll_age + weight_length * nll_length;
 
   ADREPORT(k);
   ADREPORT(L_inf);
   ADREPORT(d);
   ADREPORT(m);
   ADREPORT(r);
+  ADREPORT(l50);
+  ADREPORT(ratio);
 
   return nll;
 }

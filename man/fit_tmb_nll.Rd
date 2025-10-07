@@ -7,6 +7,9 @@
 fit_tmb_nll(
   pars,
   age_at_length,
+  length_freq = NULL,
+  weight_age = 1,
+  weight_length = 1,
   Delta_l = 1,
   Delta_t = 0.05,
   lower = c(),
@@ -14,9 +17,15 @@ fit_tmb_nll(
 )
 }
 \arguments{
-\item{pars}{List of parameters}
+\item{pars}{List of parameters. Must include l50 and ratio if length_freq is provided.}
 
 \item{age_at_length}{Data frame with columns survey_date (numeric), length, K, count.}
+
+\item{length_freq}{Optional data frame with columns length and count for length frequency data.}
+
+\item{weight_age}{Numeric weight for age-at-length likelihood. Default 1.}
+
+\item{weight_length}{Numeric weight for length frequency likelihood. Default 1.}
 
 \item{Delta_l}{Numeric size step (cm), default 1.}
 
@@ -31,6 +40,7 @@ A list with updated \code{pars}, optimizer result, sdreport, obj, and data
 used.
 }
 \description{
-Optimizes k, L_inf, d, m, and r using nlminb().
+Optimizes k, L_inf, d, m, r, and optionally l50 and ratio (l25/l50) using nlminb().
 Spawning parameters, annuli_date, and annuli_min_age are treated as data.
+Can fit to age-at-length data, length frequency data, or both with weighting.
 }
