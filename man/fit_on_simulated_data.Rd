@@ -9,6 +9,9 @@ fit_on_simulated_data(
   survey_dates,
   lengths,
   n_per_length,
+  n_length_total = NULL,
+  weight_age = 1,
+  weight_length = 1,
   start_pars = NULL,
   Delta_l = 1,
   Delta_t = 0.05,
@@ -23,7 +26,14 @@ fit_on_simulated_data(
 
 \item{lengths}{Numeric vector of length-class centers.}
 
-\item{n_per_length}{Integer or vector sample sizes per length per survey.}
+\item{n_per_length}{Integer or vector sample sizes per length per survey (for age data).}
+
+\item{n_length_total}{Optional total sample size for length frequency data. If NULL,
+no length frequency data is simulated.}
+
+\item{weight_age}{Weight for age-at-length likelihood. Default 1.}
+
+\item{weight_length}{Weight for length frequency likelihood. Default 1.}
 
 \item{start_pars}{Optional list of starting values for optimization; defaults
 to \code{true_pars} with small jitter.}
@@ -35,9 +45,11 @@ to \code{true_pars} with small jitter.}
 \item{lower, upper}{Optional bound vectors for \code{fit_tmb_nll()}.}
 }
 \value{
-A list with \code{simulated_data}, \code{fit}, and \code{comparison} data.frame.
+A list with \code{simulated_age_data}, \code{simulated_length_data}, \code{fit}, and
+\code{comparison} data.frame.
 }
 \description{
 Runs \code{fit_tmb_nll()} on data from \code{simulate_age_at_length_from_parameters()} and
-returns a compact comparison table with true vs estimated parameters.
+optionally \code{simulate_length_freq_from_parameters()}, returning a compact
+comparison table with true vs estimated parameters.
 }
