@@ -104,7 +104,10 @@ Type objective_function<Type>::operator() () {
     v_minus(i) = CppAD::CondExpLt(v(i), Type(0), v(i), Type(0));
   }
   vector<Type> mu_vec(N_l);
-  for (int i = 0; i < N_l; ++i) mu_vec(i) = m / l_grid(i);
+  for (int i = 0; i < N_l; ++i) {
+    Type l_safe = CppAD::CondExpGt(l_grid(i), Type(1e-10), l_grid(i), Type(1e-10));
+    mu_vec(i) = m / l_safe;
+  }
 
   // Tridiagonal system
   vector<Type> a_(N_l - 1), b_(N_l), c_(N_l - 1);
@@ -283,6 +286,11 @@ Type objective_function<Type>::operator() () {
   
   // Combined weighted NLL
   Type nll = weight_age * nll_age + weight_length * nll_length;
+  
+  // Report NLL components for testing
+  REPORT(nll_age);
+  REPORT(nll_length);
+  REPORT(nll);
 
   ADREPORT(k);
   ADREPORT(L_inf);

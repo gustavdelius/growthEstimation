@@ -49,7 +49,12 @@ fit_tmb_nll <- function(
     }
 
     # Build grids similarly to get_age_log_likelihood()
-    l_max <- ceiling(max(age_at_length$length) * 1.1)
+    # Use maximum length from both age_at_length and length_freq if available
+    if (use_length_freq) {
+        l_max <- ceiling(max(age_at_length$length, length_freq$length) * 1.1)
+    } else {
+        l_max <- ceiling(max(age_at_length$length) * 1.1)
+    }
     t_max <- max(age_at_length$K) + 2
     N_l <- ceiling(l_max / Delta_l)
     N_t <- ceiling(t_max / Delta_t)

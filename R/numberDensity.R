@@ -241,18 +241,25 @@ get_length_log_likelihood <- function(pars, length_freq, Delta_l = 1, l_max = NU
     l_grid <- (1:N_l - 0.5) * Delta_l
     
     # Apply size selectivity if parameters are provided
-    if (!is.null(pars$l50) && !is.null(pars$l25)) {
-        # Calculate slope from l25 and l50
-        # At l50: selectivity = 0.5, at l25: selectivity = 0.25
-        # Using logistic function: S(l) = 1 / (1 + exp(-slope * (l - l50)))
-        # Solving: slope = log(3) / (l50 - l25)
-        slope <- log(3) / (pars$l50 - pars$l25)
+    # Calculate l25 from ratio if needed (consistent with TMB implementation)
+    if (!is.null(pars$l50)) {
+        if (is.null(pars$l25) && !is.null(pars$ratio)) {
+            pars$l25 <- pars$ratio * pars$l50
+        }
         
-        # Calculate selectivity for each length in the grid
-        selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
-        
-        # Multiply density by selectivity
-        u_steady <- u_steady * selectivity
+        if (!is.null(pars$l25)) {
+            # Calculate slope from l25 and l50
+            # At l50: selectivity = 0.5, at l25: selectivity = 0.25
+            # Using logistic function: S(l) = 1 / (1 + exp(-slope * (l - l50)))
+            # Solving: slope = log(3) / (l50 - l25)
+            slope <- log(3) / (pars$l50 - pars$l25)
+            
+            # Calculate selectivity for each length in the grid
+            selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
+            
+            # Multiply density by selectivity
+            u_steady <- u_steady * selectivity
+        }
     }
     
     # Normalize density to get probabilities
