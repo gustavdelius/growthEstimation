@@ -165,40 +165,40 @@ simulate_length_freq_from_parameters <- function(
     if (is.null(l_max)) {
         l_max <- ceiling(max(lengths) * 1.1)
     }
-    
+
     # Get steady state density
     u_steady <- solve_pde_steady_state(pars, Delta_l = Delta_l, l_max = l_max)
-    
+
     # Create length grid
     N_l <- length(u_steady)
     l_grid <- (1:N_l - 0.5) * Delta_l
-    
+
     # Apply selectivity if parameters provided
     if (!is.null(pars$l50)) {
         if (is.null(pars$l25) && !is.null(pars$ratio)) {
             pars$l25 <- pars$ratio * pars$l50
         }
-        
+
         if (!is.null(pars$l25)) {
             slope <- log(3) / (pars$l50 - pars$l25)
             selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
             u_steady <- u_steady * selectivity
         }
     }
-    
+
     # Normalize to probabilities
     prob_model <- u_steady / sum(u_steady)
-    
+
     # Map observed lengths to grid indices
     length_indices <- pmax(1, pmin(N_l, ceiling(lengths / Delta_l)))
-    
+
     # Get probabilities for observed lengths
     prob_obs <- prob_model[length_indices]
     prob_obs <- prob_obs / sum(prob_obs)  # Renormalize to observed lengths
-    
+
     # Sample from multinomial
     counts <- as.vector(rmultinom(1, size = n_total, prob = prob_obs))
-    
+
     # Return data frame
     data.frame(
         length = lengths,
@@ -209,7 +209,7 @@ simulate_length_freq_from_parameters <- function(
 #' Fit on simulated survey data and compare to true parameters
 #'
 #' Runs `fit_tmb_nll()` on data from `simulate_age_at_length_from_parameters()` and
-#' optionally `simulate_length_freq_from_parameters()`, returning a compact 
+#' optionally `simulate_length_freq_from_parameters()`, returning a compact
 #' comparison table with true vs estimated parameters.
 #'
 #' @param true_pars List of true parameters to simulate from.
@@ -225,7 +225,7 @@ simulate_length_freq_from_parameters <- function(
 #' @param Delta_l Numeric size step.
 #' @param Delta_t Numeric time step.
 #' @param lower,upper Optional bound vectors for `fit_tmb_nll()`.
-#' @return A list with `simulated_age_data`, `simulated_length_data`, `fit`, and 
+#' @return A list with `simulated_age_data`, `simulated_length_data`, `fit`, and
 #'   `comparison` data.frame.
 #' @export
 fit_on_simulated_data <- function(
@@ -255,11 +255,11 @@ fit_on_simulated_data <- function(
     if (nrow(sim_age_df) == 0L) {
         stop("Age simulation produced no observations; check parameters and sampling design.")
     }
-    
+
     # Simulate length frequency data if requested
     sim_length_df <- NULL
     use_length_freq <- !is.null(n_length_total) && n_length_total > 0
-    
+
     if (use_length_freq) {
         sim_length_df <- simulate_length_freq_from_parameters(
             pars = true_pars,
@@ -301,7 +301,7 @@ fit_on_simulated_data <- function(
     if (use_length_freq) {
         keys <- c(keys, "l50", "ratio", "l25")
     }
-    
+
     comp <- data.frame(
         parameter = keys,
         true = vapply(keys, function(k) {
@@ -311,13 +311,17 @@ fit_on_simulated_data <- function(
         estimated = vapply(keys, function(k) {
             val <- est_pars[[k]]
             if (is.null(val)) NA_real_ else as.numeric(val)
+        }, numeric(1)),
+        start = vapply(keys, function(k) {
+            val <- start_pars[[k]]
+            if (is.null(val)) NA_real_ else as.numeric(val)
         }, numeric(1))
     )
 
     list(
-        simulated_age_data = sim_age_df, 
+        simulated_age_data = sim_age_df,
         simulated_length_data = sim_length_df,
-        fit = fit, 
+        fit = fit,
         comparison = comp
     )
 }
