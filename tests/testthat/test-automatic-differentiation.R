@@ -2,9 +2,6 @@
 # This test verifies that the TMB automatic differentiation gradients
 # are consistent with finite difference approximations
 
-library(testthat)
-library(growthEstimation)
-
 # Helper function to compute finite difference gradients
 compute_finite_difference_gradient <- function(obj, par, h = 1e-6) {
   n_par <- length(par)
@@ -333,20 +330,20 @@ test_that("TMB AD gradients match FD for length frequency data", {
     annuli_date = 0.25,
     annuli_min_age = 0.5
   )
-  
+
   # Create TMB object with length frequency data
-  obj <- create_test_tmb_object(pars, 
+  obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
                                  length_freq = Cod_CS_length_freq)
-  
+
   # Test at initial parameters
   test_par <- obj$par
-  
+
   # Get gradients
   ad_gradient_raw <- obj$gr(test_par)
   ad_gradient <- as.vector(ad_gradient_raw)
   fd_gradient <- compute_finite_difference_gradient(obj, test_par)
-  
+
   # Verify
   expect_equal(length(ad_gradient), 7)  # k, L_inf, d, m, r, l50, ratio
   expect_true(all(is.finite(ad_gradient)))
@@ -361,19 +358,19 @@ test_that("Gradient consistency for l50 parameter", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
                                  length_freq = Cod_CS_length_freq)
   test_par <- obj$par
-  
+
   # Get gradients
   ad_gradient <- as.vector(obj$gr(test_par))
   fd_gradient <- compute_finite_difference_gradient(obj, test_par)
-  
+
   # l50 is the 6th parameter (k, L_inf, d, m, r, l50)
   l50_index <- which(names(test_par) == "l50")
-  
+
   expect_true(is.finite(ad_gradient[l50_index]),
               info = "AD gradient for l50 is not finite")
   expect_true(is.finite(fd_gradient[l50_index]),
@@ -389,19 +386,19 @@ test_that("Gradient consistency for ratio parameter", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
                                  length_freq = Cod_CS_length_freq)
   test_par <- obj$par
-  
+
   # Get gradients
   ad_gradient <- as.vector(obj$gr(test_par))
   fd_gradient <- compute_finite_difference_gradient(obj, test_par)
-  
+
   # ratio is the 7th parameter
   ratio_index <- which(names(test_par) == "ratio")
-  
+
   expect_true(is.finite(ad_gradient[ratio_index]),
               info = "AD gradient for ratio is not finite")
   expect_true(is.finite(fd_gradient[ratio_index]),
@@ -417,22 +414,22 @@ test_that("Gradient consistency for all parameters with length frequency", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
                                  length_freq = Cod_CS_length_freq)
   test_par <- obj$par
-  
+
   # Get gradients
   ad_gradient <- as.vector(obj$gr(test_par))
   fd_gradient <- compute_finite_difference_gradient(obj, test_par)
-  
+
   # Check each parameter individually
   parameter_names <- c("k", "L_inf", "d", "m", "r", "l50", "ratio")
-  
+
   for (i in seq_along(parameter_names)) {
     param_name <- parameter_names[i]
-    
+
     expect_true(is.finite(ad_gradient[i]),
                 info = paste("AD gradient for", param_name, "is not finite"))
     expect_true(is.finite(fd_gradient[i]),
@@ -450,7 +447,7 @@ test_that("Gradient consistency with different selectivity parameters", {
     list(l50 = 40, ratio = 0.9),   # Steep selectivity (ratio close to 1)
     list(l50 = 40, ratio = 0.5)    # Gradual selectivity
   )
-  
+
   for (case in test_cases) {
     pars <- list(
       k = 0.3, L_inf = 100, d = 0.2, m = 20, r = 0.5,
@@ -458,15 +455,15 @@ test_that("Gradient consistency with different selectivity parameters", {
       spawning_mu = 0.4, spawning_kappa = 3,
       annuli_date = 0.25, annuli_min_age = 0.5
     )
-    
+
     obj <- create_test_tmb_object(pars,
                                    age_at_length = Cod_CS_age_at_length,
                                    length_freq = Cod_CS_length_freq)
     test_par <- obj$par
-    
+
     ad_gradient <- as.vector(obj$gr(test_par))
     fd_gradient <- compute_finite_difference_gradient(obj, test_par)
-    
+
     expect_true(all(is.finite(ad_gradient)),
                 info = paste("AD gradient not finite for l50 =", case$l50, "ratio =", case$ratio))
     expect_true(all(is.finite(fd_gradient)),
@@ -483,7 +480,7 @@ test_that("Gradient consistency with different likelihood weights", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   # Test different weighting schemes
   weight_cases <- list(
     list(weight_age = 1, weight_length = 1),
@@ -492,7 +489,7 @@ test_that("Gradient consistency with different likelihood weights", {
     list(weight_age = 0, weight_length = 1),  # Length only
     list(weight_age = 1, weight_length = 0)   # Age only (but still has l50, ratio params)
   )
-  
+
   for (case in weight_cases) {
     obj <- create_test_tmb_object(pars,
                                    age_at_length = Cod_CS_age_at_length,
@@ -500,12 +497,12 @@ test_that("Gradient consistency with different likelihood weights", {
                                    weight_age = case$weight_age,
                                    weight_length = case$weight_length)
     test_par <- obj$par
-    
+
     ad_gradient <- as.vector(obj$gr(test_par))
     fd_gradient <- compute_finite_difference_gradient(obj, test_par)
-    
+
     expect_true(all(is.finite(ad_gradient)),
-                info = paste("AD gradient not finite for weights", 
+                info = paste("AD gradient not finite for weights",
                             case$weight_age, ":", case$weight_length))
     expect_true(all(is.finite(fd_gradient)),
                 info = paste("FD gradient not finite for weights",
@@ -523,16 +520,16 @@ test_that("Gradient for l50 is sensitive to length frequency data", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   # With length frequency data
   obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
                                  length_freq = Cod_CS_length_freq)
   test_par <- obj$par
   ad_gradient <- as.vector(obj$gr(test_par))
-  
+
   l50_index <- which(names(test_par) == "l50")
-  
+
   # Gradient for l50 should be non-zero when length_freq data is used
   expect_true(abs(ad_gradient[l50_index]) > 1e-6,
               info = "Gradient for l50 should be non-zero with length frequency data")
@@ -545,16 +542,16 @@ test_that("Gradient for ratio is sensitive to length frequency data", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   # With length frequency data
   obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
                                  length_freq = Cod_CS_length_freq)
   test_par <- obj$par
   ad_gradient <- as.vector(obj$gr(test_par))
-  
+
   ratio_index <- which(names(test_par) == "ratio")
-  
+
   # Gradient for ratio should be non-zero when length_freq data is used
   expect_true(abs(ad_gradient[ratio_index]) > 1e-6,
               info = "Gradient for ratio should be non-zero with length frequency data")
@@ -567,29 +564,29 @@ test_that("Gradients change with different length frequency datasets", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   # Create different length frequency datasets
   length_freq_1 <- data.frame(
     length = c(20, 30, 40, 50, 60),
     count = c(10, 20, 30, 20, 10)
   )
-  
+
   length_freq_2 <- data.frame(
     length = c(10, 20, 30, 40, 50),
     count = c(5, 15, 25, 15, 5)
   )
-  
+
   # Get gradients for each dataset
-  obj1 <- create_test_tmb_object(pars, 
+  obj1 <- create_test_tmb_object(pars,
                                   age_at_length = Cod_CS_age_at_length,
                                   length_freq = length_freq_1)
   grad1 <- as.vector(obj1$gr(obj1$par))
-  
+
   obj2 <- create_test_tmb_object(pars,
                                   age_at_length = Cod_CS_age_at_length,
                                   length_freq = length_freq_2)
   grad2 <- as.vector(obj2$gr(obj2$par))
-  
+
   # Gradients should be different for different data
   expect_false(all(abs(grad1 - grad2) < 1e-10),
                info = "Gradients should differ for different length frequency data")
@@ -602,7 +599,7 @@ test_that("Gradient consistency for length-only likelihood", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   # Length frequency only (weight_age = 0)
   obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
@@ -610,10 +607,10 @@ test_that("Gradient consistency for length-only likelihood", {
                                  weight_age = 0,
                                  weight_length = 1)
   test_par <- obj$par
-  
+
   ad_gradient <- as.vector(obj$gr(test_par))
   fd_gradient <- compute_finite_difference_gradient(obj, test_par)
-  
+
   expect_true(all(is.finite(ad_gradient)))
   expect_true(all(is.finite(fd_gradient)))
   expect_equal(ad_gradient, fd_gradient, tolerance = 1e-3)
@@ -626,19 +623,19 @@ test_that("All 7 parameters have non-zero gradients with combined data", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   obj <- create_test_tmb_object(pars,
                                  age_at_length = Cod_CS_age_at_length,
                                  length_freq = Cod_CS_length_freq)
   test_par <- obj$par
   ad_gradient <- as.vector(obj$gr(test_par))
-  
+
   # Check that all parameters have meaningful gradients
   parameter_names <- c("k", "L_inf", "d", "m", "r", "l50", "ratio")
-  
+
   for (i in seq_along(parameter_names)) {
     param_name <- parameter_names[i]
-    
+
     # For most parameters, gradient should be non-negligible
     # Some parameters might have small gradients depending on data
     expect_true(is.finite(ad_gradient[i]),
@@ -653,7 +650,7 @@ test_that("Gradient scales appropriately with likelihood weights", {
     spawning_mu = 0.4, spawning_kappa = 3,
     annuli_date = 0.25, annuli_min_age = 0.5
   )
-  
+
   # Get gradient with weight_length = 1
   obj1 <- create_test_tmb_object(pars,
                                   age_at_length = Cod_CS_age_at_length,
@@ -661,7 +658,7 @@ test_that("Gradient scales appropriately with likelihood weights", {
                                   weight_age = 0,
                                   weight_length = 1)
   grad1 <- as.vector(obj1$gr(obj1$par))
-  
+
   # Get gradient with weight_length = 2
   obj2 <- create_test_tmb_object(pars,
                                   age_at_length = Cod_CS_age_at_length,
@@ -669,7 +666,7 @@ test_that("Gradient scales appropriately with likelihood weights", {
                                   weight_age = 0,
                                   weight_length = 2)
   grad2 <- as.vector(obj2$gr(obj2$par))
-  
+
   # Gradients should scale approximately linearly with weights
   # grad2 ≈ 2 * grad1
   expect_equal(grad2, 2 * grad1, tolerance = 1e-6,
