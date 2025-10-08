@@ -29,18 +29,21 @@ fit_tmb_nll <- function(
 ) {
     stopifnot(all(c("survey_date", "length", "K", "count") %in% names(age_at_length)))
     age_at_length <- as.data.frame(age_at_length)
-    
+
     # Ensure r parameter is present (do this early)
     if (is.null(pars$r)) {
         pars$r <- 0  # Default initial value
     }
-    
+
     # Check if length_freq is provided
     use_length_freq <- !is.null(length_freq)
     if (use_length_freq) {
         stopifnot(all(c("length", "count") %in% names(length_freq)))
         length_freq <- as.data.frame(length_freq)
-        stopifnot(!is.null(pars$l50), !is.null(pars$ratio))
+        # Set `pars$ratio` and `pars$l25` from each other if one is supplied
+        if (is.null(pars$ratio)) pars$ratio <- pars$l25 / pars$l50
+        if (is.null(pars$l25)) pars$l25 <- pars$l50 * pars$ratio
+        stopifnot(!is.null(pars$l50), !is.null(pars$l25), !is.null(pars$ratio))
     }
 
     # Ensure vB_min_size present in pars ----
@@ -142,15 +145,15 @@ fit_tmb_nll <- function(
 
     # Set up bounds
     if (use_length_freq) {
-        lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6, 
+        lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6,
                        l50 = 1e-3, ratio = 1e-6)
-        upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf, 
+        upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf,
                        l50 = Inf, ratio = 0.999)  # ratio < 1 to enforce l25 < l50
     } else {
         lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6)
         upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf)
     }
-    
+
     if (!all(names(lower) %in% parameter_names)) {
         bad_names <- setdiff(names(lower), parameter_names)
         stop("You cannot specify a lower limit on: ", paste(bad_names, collapse = ", "))
@@ -194,7 +197,7 @@ fit_tmb_nll <- function(
     # Update parameters in `pars`
     par <- opt$par
     pars[names(par)] <- par[names(par)]
-    
+
     # If using length frequency, convert ratio back to l25
     if (use_length_freq) {
         pars$l25 <- pars$ratio * pars$l50
