@@ -59,26 +59,19 @@ setup_grid <- function(N_l, Delta_l) {
 #' @param pars A list containing model parameters: k, L_inf, d, m, r
 #' @param l_grid Size grid at cell centres
 #' @param l_interfaces Size grid at cell interfaces
-#' @param steady_state If TRUE, use epsilon to avoid division by zero in mu
 #' @return A list containing v, D (at interfaces), and mu (at centres)
 #' @keywords internal
-calculate_coefficients <- function(pars, l_grid, l_interfaces, steady_state = FALSE) {
+calculate_coefficients <- function(pars, l_grid, l_interfaces) {
     # Use constant growth rate r for sizes below vB_min_size,
     # von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
     vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
-    growth_rate <- ifelse(l_interfaces < vB_min_size, 
-                         pars$r, 
+    growth_rate <- ifelse(l_interfaces < vB_min_size,
+                         pars$r,
                          pars$k * (pars$L_inf - l_interfaces))
     v <- growth_rate - pars$d / 2
     D <- pars$d * l_interfaces / 2
-    
-    # For steady state, add epsilon to avoid division by zero
-    mu <- if (steady_state) {
-        pars$m / pmax(l_grid, 1e-10)
-    } else {
-        pars$m / l_grid
-    }
-    
+    mu <- pars$m / l_grid
+
     list(
         v = v,
         D = D,
@@ -93,46 +86,69 @@ calculate_coefficients <- function(pars, l_grid, l_interfaces, steady_state = FA
 #'
 #' @param N_l Number of size cells
 #' @param Delta_l Size step size
-#' @param Delta_t Time step size (use 1.0 for steady state)
+#' @param Delta_t Time step size
 #' @param coeffs List of coefficients from calculate_coefficients()
+#' @param steady_state Logical, whether to build steady-state system (default FALSE)
 #' @return A list containing the tridiagonal matrix diagonals (a_, b_, c_)
 #' @keywords internal
-build_tridiagonal_system <- function(N_l, Delta_l, Delta_t, coeffs) {
+build_tridiagonal_system <- function(N_l, Delta_l, Delta_t, coeffs, steady_state = FALSE) {
     # Initialize diagonal vectors
     a_ <- numeric(N_l - 1)
     b_ <- numeric(N_l)
     c_ <- numeric(N_l - 1)
-    
+
     # Pre-factors for convenience
-    c1 <- Delta_t / Delta_l
-    c2 <- Delta_t / (Delta_l^2)
-    
+    # For steady state, use Delta_t = 1 to avoid including time derivative terms
+    if (steady_state) {
+        c1 <- 1.0 / Delta_l
+        c2 <- 1.0 / (Delta_l^2)
+    } else {
+        c1 <- Delta_t / Delta_l
+        c2 <- Delta_t / (Delta_l^2)
+    }
+
     v_plus <- coeffs$v_plus
     v_minus <- coeffs$v_minus
     D <- coeffs$D
     mu <- coeffs$mu
-    
+
     # Fill the vectors for the interior points (i = 2 to N_l-1)
     for (i in 2:(N_l - 1)) {
         a_[i - 1] <- -c1 * v_plus[i] - c2 * D[i]
         c_[i] <- c1 * v_minus[i + 1] - c2 * D[i + 1]
-        b_[i] <- 1 + Delta_t * mu[i] +
-            c1 * (v_plus[i + 1] - v_minus[i]) +
-            c2 * (D[i + 1] + D[i])
+        if (steady_state) {
+            # For steady state: no "1 +" term (solving A * u = 0)
+            b_[i] <- mu[i] + c1 * (v_plus[i + 1] - v_minus[i]) +
+                c2 * (D[i + 1] + D[i])
+        } else {
+            # For time-dependent: include identity from time derivative
+            b_[i] <- 1 + Delta_t * mu[i] +
+                c1 * (v_plus[i + 1] - v_minus[i]) +
+                c2 * (D[i + 1] + D[i])
+        }
     }
-    
+
     # Apply Boundary Conditions ----
-    
+
     # -- At l_0 = 0 (i=1): No-Flux condition (J_{1/2} = 0) --
-    b_[1] <- 1 + Delta_t * mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
+    if (steady_state) {
+        b_[1] <- mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
+    } else {
+        b_[1] <- 1 + Delta_t * mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
+    }
     c_[1] <- c1 * (v_minus[2] - D[2] / Delta_l)
-    
+
     # -- At l_max (i=N_l): Dirichlet condition u(l_max, t) = 0 --
     a_[N_l - 1] <- -c1 * v_plus[N_l] - c2 * D[N_l]
-    b_[N_l] <- 1 + Delta_t * mu[N_l] +
-        c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
-        c2 * (D[N_l + 1] + D[N_l])
-    
+    if (steady_state) {
+        b_[N_l] <- mu[N_l] + c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
+            c2 * (D[N_l + 1] + D[N_l])
+    } else {
+        b_[N_l] <- 1 + Delta_t * mu[N_l] +
+            c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
+            c2 * (D[N_l + 1] + D[N_l])
+    }
+
     list(a = a_, b = b_, c = c_)
 }
 
@@ -156,7 +172,7 @@ solve_pde <- function(pars, u_initial,
     # Set up Grids ----
     N_l <- length(u_initial) # Number of Size cells
     N_t <- ceiling(t_max / Delta_t) # Number of time steps
-    
+
     grid <- setup_grid(N_l, Delta_l)
 
     # Initialize Solution Matrix ----
@@ -166,8 +182,7 @@ solve_pde <- function(pars, u_initial,
 
     # Pre-calculate Coefficients ----
     # These coefficients are time-independent, so we can compute them once.
-    coeffs <- calculate_coefficients(pars, grid$l_grid, grid$l_interfaces, 
-                                     steady_state = FALSE)
+    coeffs <- calculate_coefficients(pars, grid$l_grid, grid$l_interfaces)
 
     # Construct the tridiagonal system matrix (A) ----
     tri_system <- build_tridiagonal_system(N_l, Delta_l, Delta_t, coeffs)
@@ -178,7 +193,7 @@ solve_pde <- function(pars, u_initial,
         d_rhs <- u_solution[n, ]
 
         # Solve the system A * u^{n+1} = u^n
-        u_solution[n + 1, ] <- solve_thomas(tri_system$a, tri_system$b, 
+        u_solution[n + 1, ] <- solve_thomas(tri_system$a, tri_system$b,
                                             tri_system$c, d_rhs)
     }
 
@@ -222,38 +237,36 @@ get_greens_function <- function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 
 #'
 #' @export
 solve_pde_steady_state <- function(pars, Delta_l = 1, l_max = 100) {
-    
+
     # Set up Grid ----
     N_l <- ceiling(l_max / Delta_l)  # Number of size cells
     grid <- setup_grid(N_l, Delta_l)
-    
+
     # Pre-calculate Coefficients ----
-    coeffs <- calculate_coefficients(pars, grid$l_grid, grid$l_interfaces, 
-                                     steady_state = TRUE)
-    
+    coeffs <- calculate_coefficients(pars, grid$l_grid, grid$l_interfaces)
+
     # Construct the tridiagonal system matrix (A) for steady state ----
-    # For steady state, we use Delta_t = 1.0 which gives the correct scaling
-    tri_system <- build_tridiagonal_system(N_l, Delta_l, Delta_t = 1.0, coeffs)
-    
+    tri_system <- build_tridiagonal_system(N_l, Delta_l, Delta_t = 1.0, coeffs, steady_state = TRUE)
+
     # For a homogeneous system A * u = 0, we need to impose a constraint
     # We'll fix u[1] = 1 and solve for the remaining variables
     # This gives us A' * u[2:N_l] = -A[2:N_l, 1]
-    
+
     a_ <- tri_system$a
     b_ <- tri_system$b
     c_ <- tri_system$c
-    
+
     # Create the modified system
     if (N_l > 1) {
         # Right-hand side: -A[2:N_l, 1] * u[1] where u[1] = 1
         d_rhs <- numeric(N_l - 1)
         d_rhs[1] <- -a_[1]  # -A[2, 1] since u[1] = 1
-        
+
         # Modified tridiagonal system for u[2:N_l]
         a_mod <- a_[2:(N_l - 1)]
         b_mod <- b_[2:N_l]
         c_mod <- c_[1:(N_l - 2)]
-        
+
         # Solve the system
         if (N_l > 2) {
             # Check if the system is singular (all diagonal elements are zero or very small)
@@ -270,7 +283,7 @@ solve_pde_steady_state <- function(pars, Delta_l = 1, l_max = 100) {
                 u_interior <- d_rhs[1] / b_mod[1]
             }
         }
-        
+
         # Check if solution contains NaN or Inf values
         if (any(!is.finite(u_interior))) {
             # Return a simple solution if the system is singular
@@ -282,13 +295,13 @@ solve_pde_steady_state <- function(pars, Delta_l = 1, l_max = 100) {
     } else {
         u_steady <- 1
     }
-    
+
     # Normalize the solution (optional, for numerical stability)
     # Scale so that the maximum value is 1
     max_val <- max(abs(u_steady), na.rm = TRUE)
     if (is.finite(max_val) && max_val > 0) {
         u_steady <- u_steady / max_val
     }
-    
+
     return(u_steady)
 }
