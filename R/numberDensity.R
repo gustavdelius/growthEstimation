@@ -199,6 +199,54 @@ get_periodic_number_density <- function(pars, l_max, Delta_l = 1,
     return(u)
 }
 
+#' Get steady state density with selectivity
+#'
+#' Helper function to calculate the steady-state density with optional size
+#' selectivity applied. This is used internally by `get_length_log_likelihood()`
+#' and `plot_length()`.
+#'
+#' @param pars A list containing model parameters for `solve_pde_steady_state()`
+#'   and optional selectivity parameters l50 and l25 (or ratio).
+#' @param Delta_l Width of size bins (cm).
+#' @param l_max The maximum length to consider.
+#'
+#' @return A list with two elements:
+#'   \item{density}{A numeric vector of density values (with selectivity applied)}
+#'   \item{l_grid}{A numeric vector of length bin centers (cm)}
+#' @keywords internal
+get_steady_state_density_with_selectivity <- function(pars, Delta_l, l_max) {
+    # Get steady state density
+    u_steady <- solve_pde_steady_state(pars, Delta_l = Delta_l, l_max = l_max)
+    
+    # Create length grid (cell centers)
+    N_l <- length(u_steady)
+    l_grid <- (1:N_l - 0.5) * Delta_l
+    
+    # Apply size selectivity if parameters are provided
+    # Calculate l25 from ratio if needed (consistent with TMB implementation)
+    if (!is.null(pars$l50)) {
+        if (is.null(pars$l25) && !is.null(pars$ratio)) {
+            pars$l25 <- pars$ratio * pars$l50
+        }
+        
+        if (!is.null(pars$l25)) {
+            # Calculate slope from l25 and l50
+            # At l50: selectivity = 0.5, at l25: selectivity = 0.25
+            # Using logistic function: S(l) = 1 / (1 + exp(-slope * (l - l50)))
+            # Solving: slope = log(3) / (l50 - l25)
+            slope <- log(3) / (pars$l50 - pars$l25)
+            
+            # Calculate selectivity for each length in the grid
+            selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
+            
+            # Multiply density by selectivity
+            u_steady <- u_steady * selectivity
+        }
+    }
+    
+    return(list(density = u_steady, l_grid = l_grid))
+}
+
 #' Get log likelihood of length frequency observations
 #'
 #' Calculates the multinomial log likelihood of observed length frequencies
@@ -233,34 +281,10 @@ get_length_log_likelihood <- function(pars, length_freq, Delta_l = 1, l_max = NU
         l_max <- ceiling(max(length_freq$length) * 1.1)
     }
     
-    # Get steady state density
-    u_steady <- solve_pde_steady_state(pars, Delta_l = Delta_l, l_max = l_max)
-    
-    # Create length grid (cell centers)
+    # Get steady state density with selectivity applied
+    result <- get_steady_state_density_with_selectivity(pars, Delta_l = Delta_l, l_max = l_max)
+    u_steady <- result$density
     N_l <- length(u_steady)
-    l_grid <- (1:N_l - 0.5) * Delta_l
-    
-    # Apply size selectivity if parameters are provided
-    # Calculate l25 from ratio if needed (consistent with TMB implementation)
-    if (!is.null(pars$l50)) {
-        if (is.null(pars$l25) && !is.null(pars$ratio)) {
-            pars$l25 <- pars$ratio * pars$l50
-        }
-        
-        if (!is.null(pars$l25)) {
-            # Calculate slope from l25 and l50
-            # At l50: selectivity = 0.5, at l25: selectivity = 0.25
-            # Using logistic function: S(l) = 1 / (1 + exp(-slope * (l - l50)))
-            # Solving: slope = log(3) / (l50 - l25)
-            slope <- log(3) / (pars$l50 - pars$l25)
-            
-            # Calculate selectivity for each length in the grid
-            selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
-            
-            # Multiply density by selectivity
-            u_steady <- u_steady * selectivity
-        }
-    }
     
     # Normalize density to get probabilities
     total_density <- sum(u_steady)

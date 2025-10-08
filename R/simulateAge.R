@@ -166,25 +166,10 @@ simulate_length_freq_from_parameters <- function(
         l_max <- ceiling(max(lengths) * 1.1)
     }
 
-    # Get steady state density
-    u_steady <- solve_pde_steady_state(pars, Delta_l = Delta_l, l_max = l_max)
-
-    # Create length grid
+    # Get steady state density with selectivity applied
+    result <- get_steady_state_density_with_selectivity(pars, Delta_l = Delta_l, l_max = l_max)
+    u_steady <- result$density
     N_l <- length(u_steady)
-    l_grid <- (1:N_l - 0.5) * Delta_l
-
-    # Apply selectivity if parameters provided
-    if (!is.null(pars$l50)) {
-        if (is.null(pars$l25) && !is.null(pars$ratio)) {
-            pars$l25 <- pars$ratio * pars$l50
-        }
-
-        if (!is.null(pars$l25)) {
-            slope <- log(3) / (pars$l50 - pars$l25)
-            selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
-            u_steady <- u_steady * selectivity
-        }
-    }
 
     # Normalize to probabilities
     prob_model <- u_steady / sum(u_steady)

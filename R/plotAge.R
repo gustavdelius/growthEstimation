@@ -105,39 +105,19 @@ plot_length <- function(pars, length_freq, Delta_l = 1, l_max = NULL) {
     # Declare variables to avoid R CMD check warnings
     length <- Source <- Frequency <- NULL
 
-    # Determine l_max if not provided
+    # Calculate negative log likelihood using existing function
+    log_lik <- get_length_log_likelihood(pars, length_freq, Delta_l = Delta_l, l_max = l_max)
+    nll <- -log_lik
+
+    # Determine l_max if not provided (same logic as get_length_log_likelihood)
     if (is.null(l_max)) {
         l_max <- ceiling(max(length_freq$length) * 1.1)
     }
 
-    # Get steady state density
-    u_steady <- solve_pde_steady_state(pars, Delta_l = Delta_l, l_max = l_max)
-
-    # Create length grid (cell centers)
-    N_l <- length(u_steady)
-    l_grid <- (1:N_l - 0.5) * Delta_l
-
-    # Apply size selectivity if parameters are provided
-    # Calculate l25 from ratio if needed (consistent with TMB implementation)
-    if (!is.null(pars$l50)) {
-        if (is.null(pars$l25) && !is.null(pars$ratio)) {
-            pars$l25 <- pars$ratio * pars$l50
-        }
-
-        if (!is.null(pars$l25)) {
-            # Calculate slope from l25 and l50
-            # At l50: selectivity = 0.5, at l25: selectivity = 0.25
-            # Using logistic function: S(l) = 1 / (1 + exp(-slope * (l - l50)))
-            # Solving: slope = log(3) / (l50 - l25)
-            slope <- log(3) / (pars$l50 - pars$l25)
-
-            # Calculate selectivity for each length in the grid
-            selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
-
-            # Multiply density by selectivity
-            u_steady <- u_steady * selectivity
-        }
-    }
+    # Get steady state density with selectivity applied
+    result <- get_steady_state_density_with_selectivity(pars, Delta_l = Delta_l, l_max = l_max)
+    u_steady <- result$density
+    l_grid <- result$l_grid
 
     # Create data frame for model prediction
     model_df <- data.frame(
@@ -175,6 +155,7 @@ plot_length <- function(pars, length_freq, Delta_l = 1, l_max = NULL) {
         ) +
         labs(
             title = "Length Distribution: Observed vs Model",
+            subtitle = sprintf("Negative Log Likelihood = %.2f", nll),
             x = "Length (cm)",
             y = "Relative Frequency"
         ) +
