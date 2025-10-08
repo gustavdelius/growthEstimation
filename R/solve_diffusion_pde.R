@@ -40,6 +40,103 @@ solve_thomas <- function(a, b, c, d) {
 }
 
 
+#' Set up spatial grid for PDE solver
+#'
+#' @param N_l Number of size cells
+#' @param Delta_l Size step size (cm)
+#' @return A list containing l_grid (cell centres) and l_interfaces
+#' @keywords internal
+setup_grid <- function(N_l, Delta_l) {
+    list(
+        l_grid = (1:N_l - 0.5) * Delta_l,
+        l_interfaces = (0:N_l) * Delta_l
+    )
+}
+
+
+#' Calculate PDE coefficients at grid points
+#'
+#' @param pars A list containing model parameters: k, L_inf, d, m, r
+#' @param l_grid Size grid at cell centres
+#' @param l_interfaces Size grid at cell interfaces
+#' @param steady_state If TRUE, use epsilon to avoid division by zero in mu
+#' @return A list containing v, D (at interfaces), and mu (at centres)
+#' @keywords internal
+calculate_coefficients <- function(pars, l_grid, l_interfaces, steady_state = FALSE) {
+    # Use constant growth rate r for sizes below vB_min_size,
+    # von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
+    vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
+    growth_rate <- ifelse(l_interfaces < vB_min_size, 
+                         pars$r, 
+                         pars$k * (pars$L_inf - l_interfaces))
+    v <- growth_rate - pars$d / 2
+    D <- pars$d * l_interfaces / 2
+    
+    # For steady state, add epsilon to avoid division by zero
+    mu <- if (steady_state) {
+        pars$m / pmax(l_grid, 1e-10)
+    } else {
+        pars$m / l_grid
+    }
+    
+    list(
+        v = v,
+        D = D,
+        v_plus = pmax(v, 0),
+        v_minus = pmin(v, 0),
+        mu = mu
+    )
+}
+
+
+#' Build tridiagonal system for PDE discretization
+#'
+#' @param N_l Number of size cells
+#' @param Delta_l Size step size
+#' @param Delta_t Time step size (use 1.0 for steady state)
+#' @param coeffs List of coefficients from calculate_coefficients()
+#' @return A list containing the tridiagonal matrix diagonals (a_, b_, c_)
+#' @keywords internal
+build_tridiagonal_system <- function(N_l, Delta_l, Delta_t, coeffs) {
+    # Initialize diagonal vectors
+    a_ <- numeric(N_l - 1)
+    b_ <- numeric(N_l)
+    c_ <- numeric(N_l - 1)
+    
+    # Pre-factors for convenience
+    c1 <- Delta_t / Delta_l
+    c2 <- Delta_t / (Delta_l^2)
+    
+    v_plus <- coeffs$v_plus
+    v_minus <- coeffs$v_minus
+    D <- coeffs$D
+    mu <- coeffs$mu
+    
+    # Fill the vectors for the interior points (i = 2 to N_l-1)
+    for (i in 2:(N_l - 1)) {
+        a_[i - 1] <- -c1 * v_plus[i] - c2 * D[i]
+        c_[i] <- c1 * v_minus[i + 1] - c2 * D[i + 1]
+        b_[i] <- 1 + Delta_t * mu[i] +
+            c1 * (v_plus[i + 1] - v_minus[i]) +
+            c2 * (D[i + 1] + D[i])
+    }
+    
+    # Apply Boundary Conditions ----
+    
+    # -- At l_0 = 0 (i=1): No-Flux condition (J_{1/2} = 0) --
+    b_[1] <- 1 + Delta_t * mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
+    c_[1] <- c1 * (v_minus[2] - D[2] / Delta_l)
+    
+    # -- At l_max (i=N_l): Dirichlet condition u(l_max, t) = 0 --
+    a_[N_l - 1] <- -c1 * v_plus[N_l] - c2 * D[N_l]
+    b_[N_l] <- 1 + Delta_t * mu[N_l] +
+        c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
+        c2 * (D[N_l + 1] + D[N_l])
+    
+    list(a = a_, b = b_, c = c_)
+}
+
+
 #' Numerically solve the PDE for fish abundance density
 #'
 #' Implements an unconditionally stable finite volume scheme (implicit Euler)
@@ -57,14 +154,10 @@ solve_pde <- function(pars, u_initial,
                      Delta_l = 1, t_max = 10, Delta_t = 0.05) {
 
     # Set up Grids ----
-
     N_l <- length(u_initial) # Number of Size cells
     N_t <- ceiling(t_max / Delta_t) # Number of time steps
-
-    # Size grid (cell centres)
-    l_grid <- (1:N_l - 0.5) * Delta_l
-    # Size grid (cell interfaces, size N_l + 1)
-    l_interfaces <- (0:N_l) * Delta_l
+    
+    grid <- setup_grid(N_l, Delta_l)
 
     # Initialize Solution Matrix ----
     # Rows = space, Columns = time. Add 1 column for the initial condition.
@@ -73,62 +166,11 @@ solve_pde <- function(pars, u_initial,
 
     # Pre-calculate Coefficients ----
     # These coefficients are time-independent, so we can compute them once.
-
-    # Advection (v) and Diffusion (D) coefficients at interfaces
-    # Use constant growth rate r for sizes below vB_min_size,
-    # von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
-    vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
-    growth_rate <- ifelse(l_interfaces < vB_min_size, 
-                         pars$r, 
-                         pars$k * (pars$L_inf - l_interfaces))
-    v <- growth_rate - pars$d / 2
-    D <- pars$d * l_interfaces / 2
-
-    v_plus <- pmax(v, 0)
-    v_minus <- pmin(v, 0)
-
-    # Reaction coefficient (mu) at cell centres.
-    mu <- pars$m / l_grid
+    coeffs <- calculate_coefficients(pars, grid$l_grid, grid$l_interfaces, 
+                                     steady_state = FALSE)
 
     # Construct the tridiagonal system matrix (A) ----
-    # We define A via its three diagonals: a_ (sub), b_ (main), c_ (super)
-
-    # Initialize diagonal vectors
-    a_ <- numeric(N_l - 1)
-    b_ <- numeric(N_l)
-    c_ <- numeric(N_l - 1)
-
-    # Pre-factors for convenience
-    c1 <- Delta_t / Delta_l
-    c2 <- Delta_t / (Delta_l^2)
-
-    # Fill the vectors for the interior points (i = 2 to N_l-1)
-    # R vector indices are 1-based, so this loop is for i from 2 to N_l-1
-    for (i in 2:(N_l - 1)) {
-        # A[i, i-1] depends on interface i
-        a_[i - 1] <- -c1 * v_plus[i] - c2 * D[i]
-        # A[i, i+1] depends on interface i+1
-        c_[i] <- c1 * v_minus[i + 1] - c2 * D[i + 1]
-        # A[i, i] depends on interfaces i and i+1
-        b_[i] <- 1 + Delta_t * mu[i] +
-            c1 * (v_plus[i + 1] - v_minus[i]) +
-            c2 * (D[i + 1] + D[i])
-    }
-
-    # Apply Boundary Conditions ----
-
-    # -- At l_0 = 0 (i=1): No-Flux condition (J_{1/2} = 0) --
-    # The equation for u_1 has no u_0 term.
-    b_[1] <- 1 + Delta_t * mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
-    c_[1] <- c1 * (v_minus[2] - D[2] / Delta_l)
-
-    # -- At l_max (i=N_l): Dirichlet condition u(l_max, t) = 0 --
-    # This implies u_{N_l+1} = 0 in the flux J_{N_l+1/2}.
-    a_[N_l - 1] <- -c1 * v_plus[N_l] - c2 * D[N_l]
-    b_[N_l] <- 1 + Delta_t * mu[N_l] +
-        c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
-        c2 * (D[N_l + 1] + D[N_l])
-
+    tri_system <- build_tridiagonal_system(N_l, Delta_l, Delta_t, coeffs)
 
     # Time-Stepping Loop ----
     for (n in 1:N_t) {
@@ -136,7 +178,8 @@ solve_pde <- function(pars, u_initial,
         d_rhs <- u_solution[n, ]
 
         # Solve the system A * u^{n+1} = u^n
-        u_solution[n + 1, ] <- solve_thomas(a_, b_, c_, d_rhs)
+        u_solution[n + 1, ] <- solve_thomas(tri_system$a, tri_system$b, 
+                                            tri_system$c, d_rhs)
     }
 
     # Return Result ----
@@ -182,72 +225,23 @@ solve_pde_steady_state <- function(pars, Delta_l = 1, l_max = 100) {
     
     # Set up Grid ----
     N_l <- ceiling(l_max / Delta_l)  # Number of size cells
-    
-    # Size grid (cell centres)
-    l_grid <- (1:N_l - 0.5) * Delta_l
-    # Size grid (cell interfaces, size N_l + 1)
-    l_interfaces <- (0:N_l) * Delta_l
+    grid <- setup_grid(N_l, Delta_l)
     
     # Pre-calculate Coefficients ----
-    # These coefficients are the same as in solve_pde()
-    
-    # Advection (v) and Diffusion (D) coefficients at interfaces
-    vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
-    growth_rate <- ifelse(l_interfaces < vB_min_size, 
-                         pars$r, 
-                         pars$k * (pars$L_inf - l_interfaces))
-    v <- growth_rate - pars$d / 2
-    D <- pars$d * l_interfaces / 2
-    
-    v_plus <- pmax(v, 0)
-    v_minus <- pmin(v, 0)
-    
-    # Reaction coefficient (mu) at cell centres
-    # Add small epsilon to avoid division by zero
-    mu <- pars$m / pmax(l_grid, 1e-10)
+    coeffs <- calculate_coefficients(pars, grid$l_grid, grid$l_interfaces, 
+                                     steady_state = TRUE)
     
     # Construct the tridiagonal system matrix (A) for steady state ----
-    # For steady state: A * u = 0, so we need to solve A * u = 0
-    # This is a homogeneous system, so we need to impose a constraint
-    # We'll use the boundary condition at l_max as u(l_max) = 0
-    
-    # Initialize diagonal vectors
-    a_ <- numeric(N_l - 1)
-    b_ <- numeric(N_l)
-    c_ <- numeric(N_l - 1)
-    
-    # Pre-factors for convenience (no Delta_t since we're solving steady state)
-    c1 <- 1 / Delta_l
-    c2 <- 1 / (Delta_l^2)
-    
-    # Fill the vectors for the interior points (i = 2 to N_l-1)
-    for (i in 2:(N_l - 1)) {
-        # A[i, i-1] depends on interface i
-        a_[i - 1] <- -c1 * v_plus[i] - c2 * D[i]
-        # A[i, i+1] depends on interface i+1
-        c_[i] <- c1 * v_minus[i + 1] - c2 * D[i + 1]
-        # A[i, i] depends on interfaces i and i+1
-        b_[i] <- mu[i] +
-            c1 * (v_plus[i + 1] - v_minus[i]) +
-            c2 * (D[i + 1] + D[i])
-    }
-    
-    # Apply Boundary Conditions ----
-    
-    # -- At l_0 = 0 (i=1): No-Flux condition (J_{1/2} = 0) --
-    b_[1] <- mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
-    c_[1] <- c1 * (v_minus[2] - D[2] / Delta_l)
-    
-    # -- At l_max (i=N_l): Dirichlet condition u(l_max) = 0 --
-    # This is enforced by the homogeneous system constraint
-    a_[N_l - 1] <- -c1 * v_plus[N_l] - c2 * D[N_l]
-    b_[N_l] <- mu[N_l] +
-        c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
-        c2 * (D[N_l + 1] + D[N_l])
+    # For steady state, we use Delta_t = 1.0 which gives the correct scaling
+    tri_system <- build_tridiagonal_system(N_l, Delta_l, Delta_t = 1.0, coeffs)
     
     # For a homogeneous system A * u = 0, we need to impose a constraint
     # We'll fix u[1] = 1 and solve for the remaining variables
     # This gives us A' * u[2:N_l] = -A[2:N_l, 1]
+    
+    a_ <- tri_system$a
+    b_ <- tri_system$b
+    c_ <- tri_system$c
     
     # Create the modified system
     if (N_l > 1) {
