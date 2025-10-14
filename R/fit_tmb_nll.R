@@ -1,6 +1,6 @@
 #' Fit growth parameters by minimizing the negative log likelihood with TMB
 #'
-#' Optimizes k, L_inf, d, m, r, and optionally l50 and ratio (l25/l50) using nlminb().
+#' Optimizes t_mean, L_inf, d, m, r, and optionally l50 and ratio (l25/l50) using nlminb().
 #' Spawning parameters, annuli_date, and annuli_min_age are treated as data.
 #' Can fit to age-at-length data, length frequency data, or both with weighting.
 #'
@@ -95,6 +95,17 @@ fit_tmb_nll <- function(
         length_freq_count <- numeric(0)
     }
 
+    # Calculate conversion parameters for t_mean <-> k
+    l_min <- min(age_at_length$length)
+    l_mean_data <- mean(age_at_length$length)
+
+    # Ensure t_mean parameter is present (calculate from k if not)
+    if (is.null(pars$t_mean) && !is.null(pars$k)) {
+        l_inf <- pars$L_inf
+        s <- log((l_inf - l_min) / (l_inf - l_mean_data))
+        pars$t_mean <- l_min / pars$r + s / pars$k
+    }
+
     # Prepare TMB data and parameters
     tmb_data <- list(
         obs_survey_index = obs_survey_index,
@@ -115,14 +126,16 @@ fit_tmb_nll <- function(
         log_eps = log(1e-9),
         vB_min_size = as.numeric(pars$vB_min_size),
         weight_age = as.numeric(weight_age),
-        weight_length = as.numeric(weight_length)
+        weight_length = as.numeric(weight_length),
+        l_min = as.numeric(l_min),
+        l_mean_data = as.numeric(l_mean_data)
     )
 
     # Define parameter names and extract based on whether we're using length frequency
     if (use_length_freq) {
-        parameter_names <- c("k", "L_inf", "d", "m", "r", "l50", "ratio")
+        parameter_names <- c("t_mean", "L_inf", "d", "m", "r", "l50", "ratio")
         tmb_parameters <- list(
-            k = pars$k,
+            t_mean = pars$t_mean,
             L_inf = pars$L_inf,
             d = pars$d,
             m = pars$m,
@@ -131,9 +144,9 @@ fit_tmb_nll <- function(
             ratio = pars$ratio
         )
     } else {
-        parameter_names <- c("k", "L_inf", "d", "m", "r")
+        parameter_names <- c("t_mean", "L_inf", "d", "m", "r")
         tmb_parameters <- list(
-            k = pars$k,
+            t_mean = pars$t_mean,
             L_inf = pars$L_inf,
             d = pars$d,
             m = pars$m,
@@ -145,13 +158,13 @@ fit_tmb_nll <- function(
 
     # Set up bounds
     if (use_length_freq) {
-        lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6,
+        lower_limit = c(t_mean = 1e-3, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6,
                        l50 = 1e-3, ratio = 1e-6)
-        upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf,
+        upper_limit = c(t_mean = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf,
                        l50 = Inf, ratio = 0.999)  # ratio < 1 to enforce l25 < l50
     } else {
-        lower_limit = c(k = 1e-6, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6)
-        upper_limit = c(k = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf)
+        lower_limit = c(t_mean = 1e-3, L_inf = 1e-3, d = 1e-6, m = 1e-6, r = 1e-6)
+        upper_limit = c(t_mean = Inf, L_inf = Inf, d = Inf, m = Inf, r = Inf)
     }
 
     if (!all(names(lower) %in% parameter_names)) {
@@ -197,6 +210,10 @@ fit_tmb_nll <- function(
     # Update parameters in `pars`
     par <- opt$par
     pars[names(par)] <- par[names(par)]
+
+    # Calculate k from t_mean
+    s <- log((pars$L_inf - l_min) / (pars$L_inf - l_mean_data))
+    pars$k <- s / (pars$t_mean - l_min / pars$r)
 
     # If using length frequency, convert ratio back to l25
     if (use_length_freq) {

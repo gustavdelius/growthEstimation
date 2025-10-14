@@ -68,14 +68,22 @@ Type objective_function<Type>::operator() () {
   DATA_SCALAR(weight_age);
   DATA_SCALAR(weight_length);
 
+  // Data for k conversion
+  DATA_SCALAR(l_min);
+  DATA_SCALAR(l_mean_data);
+  
   // Parameters
-  PARAMETER(k);
+  PARAMETER(t_mean);
   PARAMETER(L_inf);
   PARAMETER(d);
   PARAMETER(m);
   PARAMETER(r);
   PARAMETER(l50);
   PARAMETER(ratio);  // ratio = l25/l50
+
+  // Convert t_mean to k
+  Type s = CppAD::log((L_inf - l_min) / (L_inf - l_mean_data));
+  Type k = s / (t_mean - l_min / r);
 
   int N_l = l_grid.size();
   int N_t = a_grid.size() - 1;
@@ -292,6 +300,7 @@ Type objective_function<Type>::operator() () {
   REPORT(nll_length);
   REPORT(nll);
 
+  ADREPORT(t_mean);
   ADREPORT(k);
   ADREPORT(L_inf);
   ADREPORT(d);

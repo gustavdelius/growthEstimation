@@ -83,7 +83,12 @@ test_that("TMB nll matches NLL computed from get_length_log_likelihood()", {
     )
 
     # Re-evaluate at starting parameters (before optimization)
-    par_start <- c(k = 0.3, L_inf = 100, d = 0.2, m = 20, r = 0.5, l50 = 40, ratio = 0.75)
+    # Calculate t_mean from k for the starting parameters
+    l_min <- min(age_at_length$length)
+    l_mean_data <- mean(age_at_length$length)
+    s <- log((100 - l_min) / (100 - l_mean_data))
+    t_mean_start <- l_min / 0.5 + s / 0.3
+    par_start <- c(t_mean = t_mean_start, L_inf = 100, d = 0.2, m = 20, r = 0.5, l50 = 40, ratio = 0.75)
     tmb$obj$fn(par_start)  # Evaluate to update internal state
     rep <- tmb$obj$report()
     nll_tmb <- rep$nll_length  # Use reported value at starting parameters
@@ -145,7 +150,12 @@ test_that("TMB nll matches combined NLL with weighted likelihoods", {
     )
 
     # Re-evaluate at starting parameters (before optimization)
-    par_start <- c(k = 0.3, L_inf = 100, d = 0.2, m = 20, r = 0.5, l50 = 40, ratio = 0.75)
+    # Calculate t_mean from k for the starting parameters
+    l_min <- min(age_at_length$length)
+    l_mean_data <- mean(age_at_length$length)
+    s <- log((100 - l_min) / (100 - l_mean_data))
+    t_mean_start <- l_min / 0.5 + s / 0.3
+    par_start <- c(t_mean = t_mean_start, L_inf = 100, d = 0.2, m = 20, r = 0.5, l50 = 40, ratio = 0.75)
     tmb$obj$fn(par_start)  # Evaluate to update internal state
     rep <- tmb$obj$report()
     nll_tmb <- rep$nll  # Use reported combined nll at starting parameters
