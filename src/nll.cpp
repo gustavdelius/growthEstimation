@@ -76,7 +76,7 @@ Type objective_function<Type>::operator() () {
   PARAMETER(t_mean);
   PARAMETER(L_inf);
   PARAMETER(d);
-  PARAMETER(m);
+  PARAMETER(k_over_m);
   PARAMETER(r);
   PARAMETER(l50);
   PARAMETER(ratio);  // ratio = l25/l50
@@ -84,6 +84,9 @@ Type objective_function<Type>::operator() () {
   // Convert t_mean to k
   Type s = CppAD::log((L_inf - l_min) / (L_inf - l_mean_data));
   Type k = s / (t_mean - l_min / r);
+  
+  // Convert k_over_m to m
+  Type m = k / k_over_m;
 
   int N_l = l_grid.size();
   int N_t = a_grid.size() - 1;
@@ -304,6 +307,7 @@ Type objective_function<Type>::operator() () {
   ADREPORT(k);
   ADREPORT(L_inf);
   ADREPORT(d);
+  ADREPORT(k_over_m);
   ADREPORT(m);
   ADREPORT(r);
   ADREPORT(l50);
