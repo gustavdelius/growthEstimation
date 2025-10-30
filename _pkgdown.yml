@@ -1,4 +1,4 @@
-url: ~
+url: https://gustavdelius.github.io/growthEstimation/
 template:
   bootstrap: 5
   math-rendering: mathjax
@@ -6,3 +6,20 @@ template:
 build:
   articles: true
   lazy: false
+
+reference:
+- title: Handling age-at-length data
+- contents:
+  - has_concept("age-at-length")
+- title: Handling length data
+- contents:
+  - has_concept("length")
+- title: Shiny gadget
+- contents:
+  - has_concept("shiny")
+- title: Optimisation
+- contents:
+  - has_concept("optimisation")
+- title: Datasets
+- contents:
+  - has_keyword("datasets")
