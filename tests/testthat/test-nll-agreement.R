@@ -1,6 +1,6 @@
 test_that("TMB nll matches NLL computed from getLogLik()", {
     # Synthetic minimal dataset with two surveys and a few observations
-    surveys <- data.frame(
+    age_at_length <- data.frame(
         survey_date = c(2020.25, 2020.25, 2021.10, 2021.10, 2021.10),
         Length = c(20L, 21L, 20L, 21L, 22L),
         K = c(0L, 1L, 0L, 1L, 1L),
@@ -25,13 +25,13 @@ test_that("TMB nll matches NLL computed from getLogLik()", {
     )
 
     # 1) NLL via getLogLik(): sum of NegLogLik contributions
-    ll_df <- getLogLik(pars, surveys, Delta_l = Delta_l, Delta_t = Delta_t)
+    ll_df <- getLogLik(pars, age_at_length, Delta_l = Delta_l, Delta_t = Delta_t)
     nll_r <- sum(ll_df$TotalNegLogLik, na.rm = TRUE)
 
     # 2) NLL via TMB objective function in nll.cpp using identical grids and data
     tmb <- fit_tmb_nll(
         pars = pars,
-        surveys = surveys,
+        age_at_length = age_at_length,
         Delta_l = Delta_l,
         Delta_t = Delta_t
     )

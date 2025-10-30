@@ -192,7 +192,7 @@ fit_on_simulated_data <- function(
     # Fit
     fit <- fit_tmb_nll(
         pars = start_pars,
-        surveys = sim_df,
+        age_at_length = sim_df,
         Delta_l = Delta_l,
         Delta_t = Delta_t,
         lower = lower,
