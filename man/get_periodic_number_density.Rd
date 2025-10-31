@@ -15,11 +15,11 @@ get_periodic_number_density(
 \arguments{
 \item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
-\item{l_max}{The maximum size}
+\item{l_max}{The maximum size (cm)}
 
 \item{Delta_l}{The size step size (cm).}
 
-\item{t_max}{The maximum simulation time.}
+\item{t_max}{The maximum simulation time (years).}
 
 \item{Delta_t}{The time step size (years). Default is 0.05.}
 }
@@ -33,7 +33,7 @@ have been happening for all negative years in the past, resulting in a
 perfectly periodic density with a period of 1 year.
 }
 \details{
-This function extends the convolution approach used in \code{get_number_density()}
+This function extends the convolution approach used in \code{get_cohort_density()}
 to include contributions from all past years by exploiting the periodicity of
 the spawning density function.
 }

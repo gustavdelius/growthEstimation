@@ -12,6 +12,7 @@ Takes stochasticity in growth rates into account when estimating growth rates.
 Useful links:
 \itemize{
   \item \url{https://github.com/gustavdelius/growthEstimation}
+  \item \url{https://gustavdelius.github.io/growthEstimation}
   \item Report bugs at \url{https://github.com/gustavdelius/growthEstimation/issues}
 }
 

@@ -2,18 +2,18 @@
 % Please edit documentation in R/solve_diffusion_pde.R
 \name{solve_pde}
 \alias{solve_pde}
-\title{Numerically solve the PDE for fish abundance density}
+\title{Numerically solve the PDE for fish number density}
 \usage{
 solve_pde(pars, u_initial, Delta_l = 1, t_max = 10, Delta_t = 0.05)
 }
 \arguments{
 \item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
-\item{u_initial}{A numeric vector for the initial condition u(l, 0).}
+\item{u_initial}{A numeric vector for the initial condition u(0,l).}
 
 \item{Delta_l}{The size step size (cm).}
 
-\item{t_max}{The maximum simulation time.}
+\item{t_max}{The maximum simulation time (years).}
 
 \item{Delta_t}{The time step size (years). Default is 0.05.}
 }
@@ -22,6 +22,14 @@ A matrix where each column is the solution u(t,l) at a given time
 step. Rows correspond to time and columns to length.
 }
 \description{
-Implements an unconditionally stable finite volume scheme (implicit Euler)
-with upwinding for advection.
+Solves the equation
+\deqn{\frac{\partial u}{\partial t} + \frac{\partial J}{\partial l} = -\mu u}
+for the number density \eqn{u(t,l)}, where the flux \eqn{J} is given by
+\deqn{J(t,l) = g(l) u(t,l) - \frac{D(l) u(t,l)}{\partial l}.}
+Here, \eqn{g(l)} is the growth rate, \eqn{D(l)} the diffusion rate,
+and \eqn{\mu(l)} the mortality rate. These are calculated with the helper
+functions \code{get_growth()}, \code{get_diffusion()} and \code{get_mortality()}.
+The PDE is solved with an unconditionally stable finite volume scheme
+(implicit Euler) with upwinding for advection. For details see
+\code{vignette("numerical_scheme")}.
 }

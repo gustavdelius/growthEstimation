@@ -4,21 +4,23 @@
 \alias{build_tridiagonal_system}
 \title{Build tridiagonal system for PDE discretization}
 \usage{
-build_tridiagonal_system(N_l, Delta_l, Delta_t, coeffs)
+build_tridiagonal_system(N_l, Delta_l, Delta_t, coeffs, steady_state = FALSE)
 }
 \arguments{
 \item{N_l}{Number of size cells}
 
 \item{Delta_l}{Size step size}
 
-\item{Delta_t}{Time step size (use 1.0 for steady state)}
+\item{Delta_t}{Time step size}
 
 \item{coeffs}{List of coefficients from calculate_coefficients()}
+
+\item{steady_state}{Logical, whether to build steady-state system (default FALSE)}
 }
 \value{
 A list containing the tridiagonal matrix diagonals (a_, b_, c_)
 }
 \description{
-Build tridiagonal system for PDE discretization
+For details see \code{vignette("numerical_scheme")}.
 }
 \keyword{internal}

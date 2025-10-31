@@ -8,18 +8,49 @@ build:
   lazy: false
 
 reference:
-- title: Handling age-at-length data
+- title: Solve model
 - contents:
+  - solve_pde
+  - get_greens_function
+  - solve_pde_steady_state
+  - solve_thomas
+  - get_growth
+  - get_diffusion
+  - get_mortality
+- title: Cohorts
+- contents:
+  - get_cohort_density
+  - get_periodic_number_density
+  - von_mises_pdf
+  - get_spawning_density
+  - plot_density_2d
+  - plot_density_3d
+- title: Age related
+- contents:
+  - get_age_log_likelihood
+  - age_likelihood
+  - age_to_annuli
+  - annuli_predictions_for_date
+  - simulate_age_at_length_from_parameters
+  - simulate_age_sample_from_model
+  - plot_age_likelihood
   - has_concept("age-at-length")
-- title: Handling length data
+- title: Length related
 - contents:
+  - get_length_log_likelihood
+  - simulate_length_freq_from_parameters
+  - plot_length
   - has_concept("length")
 - title: Shiny gadget
 - contents:
+  - tune_pars
   - has_concept("shiny")
 - title: Optimisation
 - contents:
+  - fit_on_simulated_data
+  - fit_tmb_nll
   - has_concept("optimisation")
 - title: Datasets
 - contents:
   - has_keyword("datasets")
+

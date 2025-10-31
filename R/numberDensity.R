@@ -40,11 +40,20 @@ get_spawning_density <- function(numeric_dates, mu, kappa) {
     return(density)
 }
 
-#' Get number density as a function of length and time
+#' Get cohort number density as a function of length and time
 #'
-#' Convolves the Green's function obtained with `get_greens_function()` with the
-#' spawning density from `get_spawning_density()` to produce the number density
-#' as a function of length and time.
+#' This allows to follow a cohort size distribution through time.
+#'
+#' By default this function shows only the density from individuals born within
+#' the first year (single cohort). Setting `single_cohort = FALSE` includes all
+#' individuals born between time 0 and time `t_max`, but still no individuals
+#' born earlier. If you want to include contributions from all past years to get
+#' a density that is periodic in time, use `get_periodic_number_density()`.
+#'
+#' The function convolves the Green's function obtained with
+#' `get_greens_function()` with the spawning density from
+#' `get_spawning_density()` to produce the number density as a function of
+#' length and time.
 #' @inheritParams get_greens_function
 #' @param single_cohort Logical. If TRUE (default) include only individuals born
 #'   within the first year. If FALSE, includes all individuals born between time
@@ -52,7 +61,7 @@ get_spawning_density <- function(numeric_dates, mu, kappa) {
 #' @return A matrix holding the number density u(t,l). Rows correspond to time
 #'   and columns to length.
 #' @export
-get_number_density <- function(pars, l_max, Delta_l = 1,
+get_cohort_density <- function(pars, l_max, Delta_l = 1,
                                t_max = 10, Delta_t = 0.05,
                                single_cohort = TRUE) {
     G <- get_greens_function(pars, l_max = l_max, Delta_l = Delta_l,
@@ -104,11 +113,11 @@ get_number_density <- function(pars, l_max, Delta_l = 1,
 #' have been happening for all negative years in the past, resulting in a
 #' perfectly periodic density with a period of 1 year.
 #'
-#' This function extends the convolution approach used in `get_number_density()`
+#' This function extends the convolution approach used in `get_cohort_density()`
 #' to include contributions from all past years by exploiting the periodicity of
 #' the spawning density function.
 #'
-#' @inheritParams get_number_density
+#' @inheritParams get_cohort_density
 #' @return A matrix holding the periodic number density u(t,l). Rows correspond
 #'   to time and columns to length. The density is periodic with period 1 year.
 #' @export
@@ -217,33 +226,33 @@ get_periodic_number_density <- function(pars, l_max, Delta_l = 1,
 get_steady_state_density_with_selectivity <- function(pars, Delta_l, l_max) {
     # Get steady state density
     u_steady <- solve_pde_steady_state(pars, Delta_l = Delta_l, l_max = l_max)
-    
+
     # Create length grid (cell centers)
     N_l <- length(u_steady)
     l_grid <- (1:N_l - 0.5) * Delta_l
-    
+
     # Apply size selectivity if parameters are provided
     # Calculate l25 from ratio if needed (consistent with TMB implementation)
     if (!is.null(pars$l50)) {
         if (is.null(pars$l25) && !is.null(pars$ratio)) {
             pars$l25 <- pars$ratio * pars$l50
         }
-        
+
         if (!is.null(pars$l25)) {
             # Calculate slope from l25 and l50
             # At l50: selectivity = 0.5, at l25: selectivity = 0.25
             # Using logistic function: S(l) = 1 / (1 + exp(-slope * (l - l50)))
             # Solving: slope = log(3) / (l50 - l25)
             slope <- log(3) / (pars$l50 - pars$l25)
-            
+
             # Calculate selectivity for each length in the grid
             selectivity <- 1 / (1 + exp(-slope * (l_grid - pars$l50)))
-            
+
             # Multiply density by selectivity
             u_steady <- u_steady * selectivity
         }
     }
-    
+
     return(list(density = u_steady, l_grid = l_grid))
 }
 
@@ -275,17 +284,17 @@ get_steady_state_density_with_selectivity <- function(pars, Delta_l, l_max) {
 #' pars$l25 <- 30
 #' get_length_log_likelihood(pars, Cod_CS_length_freq)
 get_length_log_likelihood <- function(pars, length_freq, Delta_l = 1, l_max = NULL) {
-    
+
     # Determine l_max if not provided
     if (is.null(l_max)) {
         l_max <- ceiling(max(length_freq$length) * 1.1)
     }
-    
+
     # Get steady state density with selectivity applied
     result <- get_steady_state_density_with_selectivity(pars, Delta_l = Delta_l, l_max = l_max)
     u_steady <- result$density
     N_l <- length(u_steady)
-    
+
     # Normalize density to get probabilities
     total_density <- sum(u_steady)
     if (total_density > 0) {
@@ -294,18 +303,18 @@ get_length_log_likelihood <- function(pars, length_freq, Delta_l = 1, l_max = NU
         # If density is zero everywhere, use uniform distribution
         prob_model <- rep(1 / N_l, N_l)
     }
-    
+
     # Match observed lengths to grid
     # For each observed length, find the corresponding grid cell
     length_indices <- pmax(1, pmin(N_l, ceiling(length_freq$length / Delta_l)))
-    
+
     # Get probabilities for observed lengths
     prob_obs <- prob_model[length_indices]
-    
+
     # Calculate multinomial log likelihood
     # Add small epsilon to avoid log(0)
     epsilon <- 1e-9
     log_lik <- sum(length_freq$count * log(prob_obs + epsilon))
-    
+
     return(log_lik)
 }

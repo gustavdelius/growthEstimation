@@ -53,36 +53,93 @@ setup_grid <- function(N_l, Delta_l) {
     )
 }
 
-
-#' Calculate PDE coefficients at grid points
+#' Get growth rate
 #'
-#' @param pars A list containing model parameters: k, L_inf, d, m, r
-#' @param l_grid Size grid at cell centres
+#' The growth rate is the von Bertalanffy growth rate above a minimum size:
+#' \deqn{g(l) = k(L_{inf}-l)}
+#' and a constant growth rate r below that size.
+#' @param pars A list containing at least the model parameters `k`, `L_inf` and
+#'   `r`
 #' @param l_interfaces Size grid at cell interfaces
-#' @return A list containing v, D (at interfaces), and mu (at centres)
-#' @keywords internal
-calculate_coefficients <- function(pars, l_grid, l_interfaces) {
+#' @return A vector with the growth rate at the cell interfaces
+#' @export
+get_growth <- function(pars, l_interfaces) {
+    # Determine vB_min_size
+    vB_min_size <- if (is.null(pars$vB_min_size)) {
+        0
+    } else {
+        as.numeric(pars$vB_min_size)
+    }
     # Use constant growth rate r for sizes below vB_min_size,
     # von Bertalanffy growth rate k*(L_inf - L) for sizes >= vB_min_size
-    vB_min_size <- if (is.null(pars$vB_min_size)) 0 else as.numeric(pars$vB_min_size)
     growth_rate <- ifelse(l_interfaces < vB_min_size,
-                         pars$r,
-                         pars$k * (pars$L_inf - l_interfaces))
-    v <- growth_rate - pars$d / 2
-    D <- pars$d * l_interfaces / 2
-    mu <- pars$m / l_grid
+                          pars$r,
+                          pars$k * (pars$L_inf - l_interfaces))
+    return(growth_rate)
+}
 
-    list(
+#' Get diffusion rate
+#'
+#' The diffusion rate is
+#' \deqn{D(l) = \frac{d l}{2}.}
+#'
+#' @param pars A list containing at least the model parameter `d`
+#' @param l_interfaces Size grid at cell interfaces
+#' @return A vector with the diffusion rate at the cell interfaces
+#' @export
+get_diffusion <- function(pars, l_interfaces) {
+    # Note: if you change this, also change the calculation of v in
+    # calculate_coefficients()
+    # Also, you may want to keep the property that there is no diffusion
+    # at l = 0.
+    diffusion_rate <- pars$d * l_interfaces / 2
+    return(diffusion_rate)
+}
+
+#' Get mortality rate
+#'
+#' The mortality rate is
+#' \deqn{\mu(l) = \frac{m}{l}.}
+#'
+#' @param pars A list containing at least the model parameter `m`
+#' @param l_grid Size grid at cell centres
+#' @return A vector with the mortality rate at the cell centres
+#' @export
+get_mortality <- function(pars, l_grid) {
+    mortality_rate <- pars$m / l_grid
+    return(mortality_rate)
+}
+
+
+#' Set up PDE coefficients for fish abundance model
+#'
+#' @param pars A list containing at least the model parameters `k`, `L_inf`,
+#'   `d`, `m` and `r`
+#' @param l_grid Size grid at cell centres
+#' @param l_interfaces Size grid at cell interfaces
+#' @return A list containing `v` and `D` (at interfaces), and `mu` (at centres)
+#' @keywords internal
+calculate_coefficients <- function(pars, l_grid, l_interfaces) {
+    growth_rate <- get_growth(pars, l_interfaces)
+    D <- get_diffusion(pars, l_interfaces)
+    mu <- get_mortality(pars, l_grid)
+    # Advection velocity adjusted for diffusion term
+    # Note: this assumes D(l) = d*l/2
+    v <- growth_rate - pars$d / 2
+
+    return(list(
         v = v,
         D = D,
         v_plus = pmax(v, 0),
         v_minus = pmin(v, 0),
         mu = mu
-    )
+    ))
 }
 
 
 #' Build tridiagonal system for PDE discretization
+#'
+#' For details see `vignette("numerical_scheme")`.
 #'
 #' @param N_l Number of size cells
 #' @param Delta_l Size step size
@@ -91,11 +148,12 @@ calculate_coefficients <- function(pars, l_grid, l_interfaces) {
 #' @param steady_state Logical, whether to build steady-state system (default FALSE)
 #' @return A list containing the tridiagonal matrix diagonals (a_, b_, c_)
 #' @keywords internal
-build_tridiagonal_system <- function(N_l, Delta_l, Delta_t, coeffs, steady_state = FALSE) {
+build_tridiagonal_system <- function(N_l, Delta_l, Delta_t, coeffs,
+                                     steady_state = FALSE) {
     # Initialize diagonal vectors
-    a_ <- numeric(N_l - 1)
-    b_ <- numeric(N_l)
-    c_ <- numeric(N_l - 1)
+    a <- numeric(N_l - 1) # Sub-diagonal
+    b <- numeric(N_l)     # Main diagonal
+    c <- numeric(N_l - 1) # Super-diagonal
 
     # Pre-factors for convenience
     # For steady state, use Delta_t = 1 to avoid including time derivative terms
@@ -112,56 +170,42 @@ build_tridiagonal_system <- function(N_l, Delta_l, Delta_t, coeffs, steady_state
     D <- coeffs$D
     mu <- coeffs$mu
 
-    # Fill the vectors for the interior points (i = 2 to N_l-1)
-    for (i in 2:(N_l - 1)) {
-        a_[i - 1] <- -c1 * v_plus[i] - c2 * D[i]
-        c_[i] <- c1 * v_minus[i + 1] - c2 * D[i + 1]
-        if (steady_state) {
-            # For steady state: no "1 +" term (solving A * u = 0)
-            b_[i] <- mu[i] + c1 * (v_plus[i + 1] - v_minus[i]) +
-                c2 * (D[i + 1] + D[i])
-        } else {
-            # For time-dependent: include identity from time derivative
-            b_[i] <- 1 + Delta_t * mu[i] +
-                c1 * (v_plus[i + 1] - v_minus[i]) +
-                c2 * (D[i + 1] + D[i])
-        }
+    for (i in 1:(N_l - 1)) {
+        a[i] <- -c1 * v_plus[i + 1] - c2 * D[i + 1]
+        c[i] <- c1 * v_minus[i + 1] - c2 * D[i + 1]
+    }
+    for (i in 1:N_l) {
+        b[i] <- 1 + Delta_t * mu[i] +
+            c1 * (v_plus[i + 1] - v_minus[i]) +
+            c2 * (D[i + 1] + D[i])
     }
 
-    # Apply Boundary Conditions ----
-
-    # -- At l_0 = 0 (i=1): No-Flux condition (J_{1/2} = 0) --
     if (steady_state) {
-        b_[1] <- mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
-    } else {
-        b_[1] <- 1 + Delta_t * mu[1] + c1 * (v_plus[2] + D[2] / Delta_l)
-    }
-    c_[1] <- c1 * (v_minus[2] - D[2] / Delta_l)
-
-    # -- At l_max (i=N_l): Dirichlet condition u(l_max, t) = 0 --
-    a_[N_l - 1] <- -c1 * v_plus[N_l] - c2 * D[N_l]
-    if (steady_state) {
-        b_[N_l] <- mu[N_l] + c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
-            c2 * (D[N_l + 1] + D[N_l])
-    } else {
-        b_[N_l] <- 1 + Delta_t * mu[N_l] +
-            c1 * (v_plus[N_l + 1] - v_minus[N_l]) +
-            c2 * (D[N_l + 1] + D[N_l])
+        # For steady state: no "1 +" term on diagonal (solving A * u = 0)
+        b <- b - 1
     }
 
-    list(a = a_, b = b_, c = c_)
+    list(a = a, b = b, c = c)
 }
 
 
-#' Numerically solve the PDE for fish abundance density
+#' Numerically solve the PDE for fish number density
 #'
-#' Implements an unconditionally stable finite volume scheme (implicit Euler)
-#' with upwinding for advection.
+#' Solves the equation
+#' \deqn{\frac{\partial u}{\partial t} + \frac{\partial J}{\partial l} = -\mu u}
+#' for the number density \eqn{u(t,l)}, where the flux \eqn{J} is given by
+#' \deqn{J(t,l) = g(l) u(t,l) - \frac{D(l) u(t,l)}{\partial l}.}
+#' Here, \eqn{g(l)} is the growth rate, \eqn{D(l)} the diffusion rate,
+#' and \eqn{\mu(l)} the mortality rate. These are calculated with the helper
+#' functions `get_growth()`, `get_diffusion()` and `get_mortality()`.
+#' The PDE is solved with an unconditionally stable finite volume scheme
+#' (implicit Euler) with upwinding for advection. For details see
+#' `vignette("numerical_scheme")`.
 #'
 #' @param pars A list containing the model parameters: k, L_inf, d, m, r.
-#' @param u_initial A numeric vector for the initial condition u(l, 0).
+#' @param u_initial A numeric vector for the initial condition u(0,l).
 #' @param Delta_l The size step size (cm).
-#' @param t_max The maximum simulation time.
+#' @param t_max The maximum simulation time (years).
 #' @param Delta_t The time step size (years). Default is 0.05.
 #' @return A matrix where each column is the solution u(t,l) at a given time
 #'   step. Rows correspond to time and columns to length.
@@ -207,7 +251,7 @@ solve_pde <- function(pars, u_initial,
 #' smallest size class.
 #'
 #' @inheritParams solve_pde
-#' @param l_max The maximum size
+#' @param l_max The maximum size (cm)
 #' @return A matrix holding the Green's function G(t,l). Rows correspond to
 #'   time and columns to length.
 #' @export
@@ -252,20 +296,20 @@ solve_pde_steady_state <- function(pars, Delta_l = 1, l_max = 100) {
     # We'll fix u[1] = 1 and solve for the remaining variables
     # This gives us A' * u[2:N_l] = -A[2:N_l, 1]
 
-    a_ <- tri_system$a
-    b_ <- tri_system$b
-    c_ <- tri_system$c
+    a <- tri_system$a
+    b <- tri_system$b
+    c <- tri_system$c
 
     # Create the modified system
     if (N_l > 1) {
         # Right-hand side: -A[2:N_l, 1] * u[1] where u[1] = 1
         d_rhs <- numeric(N_l - 1)
-        d_rhs[1] <- -a_[1]  # -A[2, 1] since u[1] = 1
+        d_rhs[1] <- -a[1]  # -A[2, 1] since u[1] = 1
 
         # Modified tridiagonal system for u[2:N_l]
-        a_mod <- a_[2:(N_l - 1)]
-        b_mod <- b_[2:N_l]
-        c_mod <- c_[1:(N_l - 2)]
+        a_mod <- a[2:(N_l - 1)]
+        b_mod <- b[2:N_l]
+        c_mod <- c[1:(N_l - 2)]
 
         # Solve the system
         if (N_l > 2) {

@@ -37,5 +37,5 @@ RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Language: en-GB
-URL: https://github.com/gustavdelius/growthEstimation
+URL: https://github.com/gustavdelius/growthEstimation, https://gustavdelius.github.io/growthEstimation
 BugReports: https://github.com/gustavdelius/growthEstimation/issues

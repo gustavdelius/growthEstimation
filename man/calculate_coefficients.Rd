@@ -2,23 +2,22 @@
 % Please edit documentation in R/solve_diffusion_pde.R
 \name{calculate_coefficients}
 \alias{calculate_coefficients}
-\title{Calculate PDE coefficients at grid points}
+\title{Set up PDE coefficients for fish abundance model}
 \usage{
-calculate_coefficients(pars, l_grid, l_interfaces, steady_state = FALSE)
+calculate_coefficients(pars, l_grid, l_interfaces)
 }
 \arguments{
-\item{pars}{A list containing model parameters: k, L_inf, d, m, r}
+\item{pars}{A list containing at least the model parameters \code{k}, \code{L_inf},
+\code{d}, \code{m} and \code{r}}
 
 \item{l_grid}{Size grid at cell centres}
 
 \item{l_interfaces}{Size grid at cell interfaces}
-
-\item{steady_state}{If TRUE, use epsilon to avoid division by zero in mu}
 }
 \value{
-A list containing v, D (at interfaces), and mu (at centres)
+A list containing \code{v} and \code{D} (at interfaces), and \code{mu} (at centres)
 }
 \description{
-Calculate PDE coefficients at grid points
+Set up PDE coefficients for fish abundance model
 }
 \keyword{internal}

@@ -58,7 +58,7 @@ pars$vB_min_size / pars$r + log(1 - pars$vB_min_size / pars$L_inf) / (pars$k * p
 This leads to the following time evolution of a yearly
 cohort:
 ```{r}
-u <- get_number_density(pars, l_max = 200, t_max = 15)
+u <- get_cohort_density(pars, l_max = 200, t_max = 15)
 plot_density_2d(u)
 ```
 
@@ -79,7 +79,7 @@ plot_age_likelihood(pars, age_at_length)
 
 This leads to a more realistic time evolution of a yearly cohort:
 ```{r}
-u <- get_number_density(pars, l_max = 200, t_max = 15)
+u <- get_cohort_density(pars, l_max = 200, t_max = 15)
 plot_density_2d(u)
 ```
 ```{r}

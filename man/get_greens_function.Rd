@@ -9,11 +9,11 @@ get_greens_function(pars, l_max, Delta_l = 1, t_max = 10, Delta_t = 0.05)
 \arguments{
 \item{pars}{A list containing the model parameters: k, L_inf, d, m, r.}
 
-\item{l_max}{The maximum size}
+\item{l_max}{The maximum size (cm)}
 
 \item{Delta_l}{The size step size (cm).}
 
-\item{t_max}{The maximum simulation time.}
+\item{t_max}{The maximum simulation time (years).}
 
 \item{Delta_t}{The time step size (years). Default is 0.05.}
 }
