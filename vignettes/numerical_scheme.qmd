@@ -37,13 +37,13 @@ $$
 
 ## Discretization
 
-We discretize the spatial domain into cells of uniform width $\Delta l$, with cell centers at $l_i$. Using a finite volume method with implicit (Backward Euler) time-stepping for unconditional stability gives:
+We discretise the spatial domain into cells of uniform width $\Delta l$, with cell centres at $l_i$. Using a finite volume method with semi-implicit time-stepping (Backward Euler but with rates evaluated at the earlier time step) for unconditional stability gives:
 $$\frac{u_i^{n+1} - u_i^n}{\Delta t} + \frac{J_{i+1/2}^{n+1} - J_{i-1/2}^{n+1}}{\Delta l} = - \mu_i u_i^{n+1}$$
 where the superscript $n$ denotes the time step.
 
-The flux $J_{i+1/2}^{n+1}$ is discretized using a first-order upwind scheme for advection and a central difference for diffusion:
-$$J_{i+1/2}^{n+1} = \left( v_{i+1/2}^+ u_i^{n+1} + v_{i+1/2}^- u_{i+1}^{n+1} \right) - D_{i+1/2} \frac{u_{i+1}^{n+1} - u_i^{n+1}}{\Delta l}$$
-where $v^+ = \max(v, 0)$ and $v^- = \min(v, 0)$.
+The flux $J_{i+1/2}^{n+1}$ is discretised using a first-order upwind scheme for advection and a central difference for diffusion:
+$$J_{i+1/2}^{n+1} = \left( v_{i+1/2}^{n+} u_i^{n+1} + v_{i+1/2}^{n-} u_{i+1}^{n+1} \right) - D_{i+1/2}^n \frac{u_{i+1}^{n+1} - u_i^{n+1}}{\Delta l}$$
+where $v^{n+} = \max(v^n, 0)$ and $v^{n-} = \min(v^n, 0)$.
 
 ## The Linear System
 
@@ -54,6 +54,9 @@ The non-zero entries of the matrix $A$ for each row $i$ are:
 * **Sub-diagonal**: $A_{i, i-1} = -\frac{\Delta t}{\Delta l} \left( v_{i-1/2}^+ + \frac{D_{i-1/2}}{\Delta l} \right)$
 * **Diagonal**: $A_{i, i} = 1 + \Delta t \mu_i + \frac{\Delta t}{\Delta l} \left( v_{i+1/2}^+ - v_{i-1/2}^- \right) + \frac{\Delta t}{(\Delta l)^2} \left( D_{i+1/2} + D_{i-1/2} \right)$
 * **Super-diagonal**: $A_{i, i+1} = \frac{\Delta t}{\Delta l} \left( v_{i+1/2}^- - \frac{D_{i+1/2}}{\Delta l} \right)$
+
+We have suppressed the superscript time index $n$ above, but notice that the
+matrix $A$ is evaluated at time $t^n$, not $t^{n+1}$. Our scheme is thus only semi-implicit.
 
 ## Boundary Conditions
 
